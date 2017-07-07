@@ -57,13 +57,19 @@ def makeGif(filenames, gifname, unit):
         image = imageio.imread(plot_directory+filename+"_"+str(append)+".png")
         writer.append_data(image)
 
+def getFiles(file_set):
+  file_list = []
+  files = open(file_set,'r')
+  for f in files:
+    line = f.split('\n')[0]
+    file_list.append(line)
+    print line
+  return file_list
 
 if __name__ == "__main__":
   #plot("humidity-5-JUL-2017","Relative Humidity")
   #plot("temperature-5-JUL-2017","Temperature deg C")
-  files = ["humidity-3-JUL-2017",
-           "humidity-4-JUL-2017",
-           "humidity-5-JUL-2017"]
+  files = getFiles("humidity_files.txt")
   makeGif(files,"humidity","Relative Humidity")
 
 
