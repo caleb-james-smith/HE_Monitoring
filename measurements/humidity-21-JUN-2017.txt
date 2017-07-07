@@ -1,4 +1,4 @@
-tget HE[1-18]-[1-4]-humidityS_f nr # 
+# tget HE[1-18]-[1-4]-humidityS_f nr # 
 HE1-1-humidityS_f 5.58386
 HE1-2-humidityS_f 6.7579
 HE1-3-humidityS_f 4.40982
