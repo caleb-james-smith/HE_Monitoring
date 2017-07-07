@@ -1,6 +1,7 @@
 # plot temperature and humidity
 
 import matplotlib.pyplot as plt
+import numpy as np
 import imageio
 
 def plot(filename,unit,plot_directory):
@@ -18,6 +19,9 @@ def plot(filename,unit,plot_directory):
   
   data.close()
   
+  mean = np.round(np.mean(values), 3)
+  std  = np.round(np.std(values), 3)
+
   vmin, vmax = 0.0, 100.0
   if "Temperature" in unit:
     vmin, vmax = 0.0, 50.0 # deg C
@@ -29,6 +33,8 @@ def plot(filename,unit,plot_directory):
   # line graph (value vs readout modudle)
   plt.plot(values)
   plt.text(10, 9, filename)
+  plt.text(10, 9, filename)
+  plt.text(40, 9, r'$\mu='+str(mean)+',\ \sigma='+str(std)+'$')
   plt.axis([0,num_rm,vmin,vmax])
   plt.ylabel(unit)
   plt.xlabel("Readout Module")
@@ -41,6 +47,7 @@ def plot(filename,unit,plot_directory):
   # histogram (count vs value)
   n, bins, patches = plt.hist(values, 20, facecolor='g', alpha=0.75)
   plt.text(2, 18, filename)
+  plt.text(2, 16, r'$\mu='+str(mean)+',\ \sigma='+str(std)+'$')
   plt.axis([vmin,vmax,0,20])
   plt.ylabel("Number of Readout Modules")
   plt.xlabel(unit)
