@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import imageio
 
 def plot(filename,unit):
-  data = open(filename,'r')
+  data = open(filename+'.txt','r')
   values = []
   num_rm = 0
   for line in data:
@@ -47,16 +47,25 @@ def plot(filename,unit):
   fig.savefig(filename+"_2.png")
   plt.clf()
 
-def makeGif(filenames, gifname):
+def makeGif(filenames, gifname, unit):
   with imageio.get_writer(gifname+'.gif', mode='I') as writer:
     for filename in filenames:
-      image = imageio.imread(filename)
-      writer.append_data(image)
+      for append in [1,2]:
+        plot(filename, unit)
+        image = imageio.imread(filename+"_"+str(append)+".png")
+        writer.append_data(image)
 
 
 if __name__ == "__main__":
-  plot("humidity-5-JUL-2017.txt","Relative Humidity")
-  plot("temperature-5-JUL-2017.txt","Temperature deg C")
-  makeGif(["humidity-5-JUL-2017.txt_1.png","humidity-5-JUL-2017.txt_2.png"],"humidity")
+  #plot("humidity-5-JUL-2017","Relative Humidity")
+  #plot("temperature-5-JUL-2017","Temperature deg C")
+  files = ["humidity-3-JUL-2017",
+           "humidity-4-JUL-2017",
+           "humidity-5-JUL-2017"]
+  makeGif(files,"humidity","Relative Humidity")
+
+
+
+
 
 
