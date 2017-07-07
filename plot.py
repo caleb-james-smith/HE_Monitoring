@@ -3,8 +3,9 @@
 import matplotlib.pyplot as plt
 import imageio
 
-def plot(filename,unit):
-  data = open(filename+'.txt','r')
+def plot(filename,unit,plot_directory):
+  data_directory = "measurements/"
+  data = open(data_directory+filename+'.txt','r')
   values = []
   num_rm = 0
   for line in data:
@@ -33,7 +34,7 @@ def plot(filename,unit):
   plt.title("Monitoring "+unit)
   plt.grid(True)
   #plt.show()
-  fig.savefig(filename+"_1.png")
+  fig.savefig(plot_directory+filename+"_1.png")
   plt.clf()
   
   # histogram (count vs value)
@@ -44,15 +45,16 @@ def plot(filename,unit):
   plt.title("Monitoring "+unit)
   plt.grid(True)
   #plt.show()
-  fig.savefig(filename+"_2.png")
+  fig.savefig(plot_directory+filename+"_2.png")
   plt.clf()
 
 def makeGif(filenames, gifname, unit):
-  with imageio.get_writer(gifname+'.gif', mode='I') as writer:
-    for filename in filenames:
-      for append in [1,2]:
-        plot(filename, unit)
-        image = imageio.imread(filename+"_"+str(append)+".png")
+  plot_directory = "images/"
+  for append in [1,2]:
+    with imageio.get_writer(gifname+'_'+str(append)+'.gif', mode='I') as writer:
+      for filename in filenames:
+        plot(filename, unit, plot_directory)
+        image = imageio.imread(plot_directory+filename+"_"+str(append)+".png")
         writer.append_data(image)
 
 
