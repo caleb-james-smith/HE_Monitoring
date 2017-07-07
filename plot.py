@@ -28,6 +28,7 @@ def plot(filename,unit,plot_directory):
   
   # line graph (value vs readout modudle)
   plt.plot(values)
+  plt.text(10, 9, filename)
   plt.axis([0,num_rm,vmin,vmax])
   plt.ylabel(unit)
   plt.xlabel("Readout Module")
@@ -39,6 +40,7 @@ def plot(filename,unit,plot_directory):
   
   # histogram (count vs value)
   n, bins, patches = plt.hist(values, 20, facecolor='g', alpha=0.75)
+  plt.text(2, 18, filename)
   plt.axis([vmin,vmax,0,20])
   plt.ylabel("Number of Readout Modules")
   plt.xlabel(unit)
@@ -51,7 +53,7 @@ def plot(filename,unit,plot_directory):
 def makeGif(filenames, gifname, unit):
   plot_directory = "images/"
   for append in [1,2]:
-    with imageio.get_writer(gifname+'_'+str(append)+'.gif', mode='I') as writer:
+    with imageio.get_writer(gifname+'_'+str(append)+'.gif', mode='I',duration=1) as writer:
       for filename in filenames:
         plot(filename, unit, plot_directory)
         image = imageio.imread(plot_directory+filename+"_"+str(append)+".png")
