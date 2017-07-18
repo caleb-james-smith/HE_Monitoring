@@ -72,6 +72,8 @@ with open("statLog.txt", "a+") as f:
 gStyle.SetOptStat("emr")
 
 tempG = TGraph()
+tempG.SetLineWidth(2)
+tempG.SetLineColor(kRed)
 tempH = TH1D("Temp", "RBX Temperatures (^{o}C)", len(temps), 0.5, len(temps)+0.5)
 tempH.SetFillColor(kRed)
 for i,t in enumerate(temps):
@@ -105,6 +107,8 @@ pad.Draw()
 c.SaveAs("tempH.jpg")
 
 humG = TGraph()
+humG.SetLineWidth(2)
+humG.SetLineColor(kBlue)
 humG.SetTitle("RBX Humidity (%);RM;Humidity (%)")
 humH = TH1D("Humidity", "RBXHumidity (%)", len(hums), 0.5, len(hums)+0.5)
 humH.SetFillColor(kBlue)
