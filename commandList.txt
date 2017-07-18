@@ -1,4 +1,69 @@
 tget HE1-[1-4]-rtdtemperature_f fnr
 tget HE1-[1-4]-humidityS_f fnr
 tget HE1-[1-4]-PeltierVoltage_f fnr
-
+get HE1-[1-4]-PeltierCurrent_f
+tget HE1-1-LeakageCurrent[1-12]_f fnr
+wait
+wait
+foo
+tget HE1-1-LeakageCurrent[13-24]_f fnr
+wait
+wait
+foo
+tget HE1-1-LeakageCurrent[25-36]_f fnr
+wait
+wait
+foo
+tget HE1-1-LeakageCurrent[37-48]_f fnr
+wait
+wait
+foo
+tget HE1-2-LeakageCurrent[1-12]_f fnr
+wait
+wait
+foo
+tget HE1-2-LeakageCurrent[13-24]_f fnr
+wait
+wait
+foo
+tget HE1-2-LeakageCurrent[25-36]_f fnr
+wait
+wait
+foo
+tget HE1-2-LeakageCurrent[37-48]_f fnr
+wait
+wait
+foo
+tget HE1-3-LeakageCurrent[1-12]_f fnr
+wait
+wait
+foo
+tget HE1-3-LeakageCurrent[13-24]_f fnr
+wait
+wait
+foo
+tget HE1-3-LeakageCurrent[25-36]_f fnr
+wait
+wait
+foo
+tget HE1-3-LeakageCurrent[37-48]_f fnr
+wait
+wait
+foo
+tget HE1-4-LeakageCurrent[1-12]_f fnr
+wait
+wait
+foo
+tget HE1-4-LeakageCurrent[13-24]_f fnr
+wait
+wait
+foo
+tget HE1-4-LeakageCurrent[25-36]_f fnr
+wait
+wait
+foo
+tget HE1-4-LeakageCurrent[37-48]_f fnr
+wait
+wait
+foo
+foo

@@ -10,7 +10,7 @@ import sys
 from argparse import ArgumentParser
 import ROOT
 from pprint import pprint
-from ROOT import TGraph, TMultiGraph, TH1D, TLegend, TCanvas, TPad, gStyle, kRed, kCyan, kGreen, kBlack
+from ROOT import TGraph, TMultiGraph, TH1D, TLegend, TCanvas, TPad, gStyle, kRed, kBlue, kOrange, kCyan, kGreen, kBlack
 ROOT.gROOT.SetBatch(True)
 
 COLORS = [kRed, kCyan, kGreen, kBlack]
@@ -26,6 +26,15 @@ minT = 9999.0
 maxT = -9999.0
 minH = 101.0
 maxH = -1.0
+# peltier voltage
+minPV = 9999.0
+maxPV = -9999.0
+# peltier current
+minPI = 9999.0
+maxPI = -9999.0
+# leakage current
+minLI = 9999.0
+maxLI = -9999.0
 with open(args.log, "r") as f:
     for line in f:
 	data = line.split()
@@ -34,10 +43,19 @@ with open(args.log, "r") as f:
 	entry["time"] = data[1]
 	entry["temp"] = [float(data[i]) for i in xrange(2, 6)]
 	entry["hum"]  = [float(data[i]) for i in xrange(6, 10)]
+	entry["peltV"] = [float(data[i]) for i in xrange(10, 14)]
+	entry["peltI"] = [float(data[i]) for i in xrange(14, 18)]
+	entry["leakI"] = [float(data[i]) for i in xrange(18, 210)]
 	minT = min(minT, min(entry["temp"]))
 	maxT = max(maxT, max(entry["temp"]))
 	minH = min(minH, min(entry["hum"]))
 	maxH = max(maxH, max(entry["hum"]))
+	minPV = min(minPV, min(entry["peltV"]))
+	maxPV = max(maxPV, max(entry["peltV"]))
+	minPI = min(minPI, min(entry["peltI"]))
+	maxPI = max(maxPI, max(entry["peltI"]))
+	minLI = min(minLI, min(entry["leakI"]))
+	maxLI = max(maxLI, max(entry["leakI"]))
 	readings.append(entry)
 
 #pprint(readings)
@@ -54,10 +72,12 @@ date = readings[0]["date"]
 
 tempG = []
 humG = []
-
+peltVG = []
+peltIG = []
 tempMG = TMultiGraph()
 humMG = TMultiGraph()
-
+peltVMG = TMultiGraph()
+peltIMG = TMultiGraph()
 
 for i in range(len(readings[0]["temp"])):
     tempG.append(TGraph())
@@ -67,6 +87,7 @@ for i in range(len(readings[0]["temp"])):
     tempG[i].SetMarkerSize(2)
     tempG[i].SetMarkerColor(COLORS[i])
 
+for i in range(len(readings[0]["hum"])):
     humG.append(TGraph())
     humG[i].SetLineColor(COLORS[i])
     humG[i].SetLineWidth(2)
@@ -74,35 +95,76 @@ for i in range(len(readings[0]["temp"])):
     humG[i].SetMarkerSize(2)
     humG[i].SetMarkerColor(COLORS[i])
 
+for i in range(len(readings[0]["peltV"])):
+    peltVG.append(TGraph())
+    peltVG[i].SetLineColor(COLORS[i])
+    peltVG[i].SetLineWidth(2)
+    peltVG[i].SetMarkerStyle(MARKERS[i])
+    peltVG[i].SetMarkerSize(2)
+    peltVG[i].SetMarkerColor(COLORS[i])
 
-tempH = TH1D("Temp", "RM Temperatures (^{o}C)", 20, minT - 0.1, maxT + 0.1)
+for i in range(len(readings[0]["peltI"])):
+    peltIG.append(TGraph())
+    peltIG[i].SetLineColor(COLORS[i])
+    peltIG[i].SetLineWidth(2)
+    peltIG[i].SetMarkerStyle(MARKERS[i])
+    peltIG[i].SetMarkerSize(2)
+    peltIG[i].SetMarkerColor(COLORS[i])
+
+
+tempH = TH1D("Temp", "RM Temperatures (^{o}C)", 20, minT - 0.05, maxT + 0.05)
 tempH.SetFillColor(kRed)
 
-humH = TH1D("Humidity", "RBX Humidity (%)", 20, -0.5, maxH + 0.5)
-humH.SetFillColor(kCyan)
+humH = TH1D("Humidity", "RBX Humidities (%)", 20, minH - 0.5, maxH + 0.5)
+humH.SetFillColor(kBlue)
+
+peltVH = TH1D("PeltV", "RBX Peltier Voltages (V)", 20, minPV - 0.05, maxPV + 0.05)
+peltVH.SetFillColor(kCyan)
+
+peltIH = TH1D("PeltI", "RBX Peltier Currents (A)", 20, minPI - 0.05, maxPI + 0.05)
+peltIH.SetFillColor(kGreen)
+
+leakIH = TH1D("LeakI", "RBX Leak Currents (A)", 20, minLI - 0.05, maxLI + 0.05)
+leakIH.SetFillColor(kOrange)
 
 for i,entry in enumerate(readings):
-    for rm in range(4):
-	# Update temp and humidity graphs
+    # Fill graphs
+    for rm in range(len(entry["temp"])):
 	temp = entry["temp"][rm]
 	tempG[rm].SetPoint(i, i, temp)
+	tempH.Fill(temp)
+	
+    for rm in range(len(entry["hum"])):
 	hum = entry["hum"][rm]
 	humG[rm].SetPoint(i, i, hum)
-	tempH.Fill(temp)
 	humH.Fill(hum)
+    
+    for rm in range(len(entry["peltV"])):
+	peltV = entry["peltV"][rm]
+	peltVG[rm].SetPoint(i, i, peltV)
+	peltVH.Fill(peltV)
+
+    for rm in range(len(entry["peltI"])):
+	peltI = entry["peltI"][rm]
+	peltIG[rm].SetPoint(i, i, peltI)
+	peltIH.Fill(peltI)
+
+    for qie in range(len(entry["leakI"])):
+	leakI = entry["leakI"][qie]
+	leakIH.Fill(leakI)
 
 
 # Graph temps
 c = TCanvas("c", "c", 1200, 1200)
-l = TLegend(0.85, 0.8, 0.99, 0.99)
+l = TLegend(0.9, 0.7, 1.0, 0.9)
 pad = TPad("p","p", 0.05, 0.05, 1.0, 1.0)
 pad.cd()
-for rm in range(4):
+for rm in range(len(tempG)):
     l.AddEntry(tempG[rm], "RM%d" % (rm+1), "pl")
     tempMG.Add(tempG[rm])
 tempMG.Draw("alp")
 pad.Update()
-tempMG.SetTitle("RBX Temperature (^{o}C);Time;Temp (^{o}C)")
+tempMG.SetTitle("RBX Temperatures (^{o}C);Time;Temp (^{o}C)")
 l.Draw()
 c.cd()
 pad.Draw()
@@ -129,7 +191,7 @@ c.SaveAs("Temp_graphs.jpg")
 c.Clear()
 pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
 pad.cd()
-tempH.SetTitle("RM Temperatures (^{o}C)")
+tempH.SetTitle("RBX Temperatures (^{o}C)")
 tempH.GetXaxis().SetTitle("Temp (^{o}C)")
 tempH.GetYaxis().SetTitle("Entries")
 #tempH.GetXaxis().SetNdivisions(len(temps))
@@ -141,19 +203,18 @@ c.SaveAs("Temp_histo.jpg")
 
 # Graph humidities
 c.Clear()
-l = TLegend(0.85, 0.8, 0.99, 0.99)
+l = TLegend(0.9, 0.7, 1.0, 0.9)
 pad = TPad("p","p", 0.05, 0.05, 1.0, 1.0)
 pad.cd()
-for rm in range(4):
+for rm in range(len(humG)):
     l.AddEntry(humG[rm], "RM%d" % (rm+1), "pl")
     humMG.Add(humG[rm])
 humMG.Draw("alp")
 pad.Update()
-humMG.SetTitle("RBX Humidity (%);Time;Humidity (%)")
+humMG.SetTitle("RBX Humidities (%);Time;Humidity (%)")
 l.Draw()
 c.cd()
 pad.Draw()
-
 
 # Set up x axis labels
 humMG.GetXaxis().SetNdivisions(len(readings))
@@ -168,7 +229,7 @@ for i in range(len(readings)):
 
 
 humMG.GetXaxis().SetTitleOffset(2.4)
-humMG.GetYaxis().SetTitleOffset(2.1)
+humMG.GetYaxis().SetTitleOffset(2.0)
 pad.Update()
 c.SaveAs("Hum_graphs.jpg")
 
@@ -176,13 +237,125 @@ c.SaveAs("Hum_graphs.jpg")
 c.Clear()
 pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
 pad.cd()
-humH.SetTitle("RM Humidities (%)")
+humH.SetTitle("RBX Humidities (%)")
 humH.GetXaxis().SetTitle("Humidity (%)")
 humH.GetYaxis().SetTitle("Entries")
 humH.Draw("HIST")
 c.cd()
 pad.Draw()
 c.SaveAs("Hum_histo.jpg")
+
+
+
+# Graph peltier voltages
+c.Clear()
+l = TLegend(0.9, 0.7, 1.0, 0.9)
+pad = TPad("p","p", 0.05, 0.05, 1.0, 1.0)
+pad.cd()
+for rm in range(len(peltVG)):
+    l.AddEntry(peltVG[rm], "RM%d" % (rm+1), "pl")
+    peltVMG.Add(peltVG[rm])
+peltVMG.Draw("alp")
+pad.Update()
+peltVMG.SetTitle("RBX Peltier Voltages (V);Time;Voltage (V)")
+l.Draw()
+c.cd()
+pad.Draw()
+
+
+# Set up x axis labels
+peltVMG.GetXaxis().SetNdivisions(len(readings))
+date = "" 
+for i in range(len(readings)):
+    # If new date, print date and time
+    if date != readings[i]["date"]:
+        date = readings[i]["date"]
+	peltVMG.GetXaxis().SetBinLabel(peltVMG.GetXaxis().FindBin(i), "#splitline{%s}{%s}"%(date, readings[i]["time"]))
+    else:
+	peltVMG.GetXaxis().SetBinLabel(peltVMG.GetXaxis().FindBin(i), readings[i]["time"])
+
+
+peltVMG.GetXaxis().SetTitleOffset(2.4)
+peltVMG.GetYaxis().SetTitleOffset(2.1)
+pad.Update()
+c.SaveAs("PeltV_graphs.jpg")
+
+
+c.Clear()
+pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
+pad.cd()
+peltVH.SetTitle("RBX Peltier Voltages (V)")
+peltVH.GetXaxis().SetTitle("Voltage (V)")
+peltVH.GetYaxis().SetTitle("Entries")
+peltVH.Draw("HIST")
+c.cd()
+pad.Draw()
+c.SaveAs("PeltV_histo.jpg")
+
+
+# Graph peltier currents
+c.Clear()
+l = TLegend(0.9, 0.7, 1.0, 0.9)
+pad = TPad("p","p", 0.05, 0.05, 1.0, 1.0)
+pad.cd()
+for rm in range(len(peltIG)):
+    l.AddEntry(peltIG[rm], "RM%d" % (rm+1), "pl")
+    peltIMG.Add(peltIG[rm])
+peltIMG.Draw("alp")
+pad.Update()
+peltIMG.SetTitle("RBX Peltier Currents (A);Time;Current (A)")
+l.Draw()
+c.cd()
+pad.Draw()
+
+
+# Set up x axis labels
+peltIMG.GetXaxis().SetNdivisions(len(readings))
+date = "" 
+for i in range(len(readings)):
+    # If new date, print date and time
+    if date != readings[i]["date"]:
+        date = readings[i]["date"]
+	peltIMG.GetXaxis().SetBinLabel(peltIMG.GetXaxis().FindBin(i), "#splitline{%s}{%s}"%(date, readings[i]["time"]))
+    else:
+	peltIMG.GetXaxis().SetBinLabel(peltIMG.GetXaxis().FindBin(i), readings[i]["time"])
+
+
+peltIMG.GetXaxis().SetTitleOffset(2.4)
+peltIMG.GetYaxis().SetTitleOffset(2.1)
+pad.Update()
+c.SaveAs("PeltI_graphs.jpg")
+
+
+c.Clear()
+pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
+pad.cd()
+peltIH.SetTitle("RBX Peltier Currents (A)")
+peltIH.GetXaxis().SetTitle("Current (A)")
+peltIH.GetYaxis().SetTitle("Entries")
+peltIH.Draw("HIST")
+c.cd()
+pad.Draw()
+c.SaveAs("PeltI_histo.jpg")
+
+
+
+# Graph leakage currents
+c.Clear()
+l = TLegend(0.85, 0.8, 0.99, 0.99)
+pad = TPad("p","p", 0.05, 0.05, 1.0, 1.0)
+pad.cd()
+leakIH.SetTitle("RBX Leakage Currents (mA)")
+leakIH.GetXaxis().SetTitle("Current (mA)")
+leakIH.GetYaxis().SetTitle("Entries")
+leakIH.GetYaxis().SetTitleOffset(2.0)
+leakIH.Draw("HIST")
+c.cd()
+pad.Draw()
+c.SaveAs("LeakI_histo.jpg")
+
+
+
 """
 graph(readings, humG, "RBX Humidity (%)", "Time", "Humidity (%)", "Hum")
 
