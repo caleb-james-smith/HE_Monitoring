@@ -62,6 +62,7 @@ tget HE1-4-LeakageCurrent[25-36]_f fnr
 wait
 wait
 foo
+foo
 tget HE1-4-LeakageCurrent[37-48]_f fnr
 wait
 wait

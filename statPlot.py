@@ -1,10 +1,14 @@
 #!/usr/bin/env python
-#######################################################################
-#  statPlot.py							      #
-#								      #
-#  Parse an ngfec_auto log file and plots stats as a function of time #
-#								      #
-#######################################################################
+########################################################################
+#  statPlot.py							       #
+#								       #
+#  Parse an ngfec_auto log file and plots stats as a function of time  #
+#								       #
+#  Can specify min/max values to only print stats from particular log  #
+#  entries. These values can be negative. For example, using min=-10   #
+#  retrieves the last 10 entries. 				       #
+#								       #
+########################################################################
 
 import sys
 from argparse import ArgumentParser
@@ -15,9 +19,21 @@ ROOT.gROOT.SetBatch(True)
 
 COLORS = [kRed, kCyan, kGreen, kBlack]
 MARKERS = [21, 22, 29, 33] 
+
+# Stat box contains
+# e: entries
+# m: mean
+# r: rms
 gStyle.SetOptStat("emr")
+gStyle.SetStatW(0.16)
+gStyle.SetStatX(1.0)
+gStyle.SetStatY(0.9)
+
 
 def plotMultiGraph(dataReadings, vals, title, xTitle, yTitle, outF):
+    """
+    Plots several TGraphs using TMultiGraph
+    """
     mg = TMultiGraph()
     cv = TCanvas(outF, "cv", 1200, 1200)
     l = TLegend(0.9, 0.7, 1.0, 0.9)
@@ -46,24 +62,28 @@ def plotMultiGraph(dataReadings, vals, title, xTitle, yTitle, outF):
     mg.GetXaxis().SetTitleOffset(2.4)
     mg.GetYaxis().SetTitleOffset(2.1)
     pad.Update()
-    cv.SaveAs(outF + "_graph.jpg")
+    cv.SaveAs(outF)
 
 
 def plotHisto(histo, outF):    
+    """
+    Plots a (pre-initialized) histogram
+    """
     cv = TCanvas(outF + "H", "cv", 1200, 1200)
     pad = TPad("p","p", 0.05, 0.0, 1.0, 1.0)
     pad.cd()
     histo.Draw("HIST")
+    pad.Update()
     cv.cd()
     pad.Draw()
-    cv.SaveAs(outF + "_histo.jpg")
+    cv.SaveAs(outF)
 
 
 def main():
     parser = ArgumentParser()
     parser.add_argument("log", help="log file from ngfec_auto")
-    parser.add_argument("--min", "-n", type=int, default=None, help="lower range bound (neg vals count backwards from the end)")
-    parser.add_argument("--max", "-x", type=int, default=None, help="upper range bound (neg vals count backwards from the end")
+    parser.add_argument("--min", "-n", type=int, default=0, help="lower range bound (neg vals count backwards from the end)")
+    parser.add_argument("--max", "-x", type=int, default=0, help="upper range bound (neg vals count backwards from the end")
     args = parser.parse_args()
 
     readings = []
@@ -71,7 +91,7 @@ def main():
     maxT = -9999.0
     minH = 101.0
     maxH = -1.0
-    # peltier voltage
+   # # peltier voltage
     minPV = 9999.0
     maxPV = -9999.0
     # peltier current
@@ -80,31 +100,54 @@ def main():
     # leakage current
     minLI = 9999.0
     maxLI = -9999.0
-    
-    with open(args.log, "r") as f:
-	for line in f:
-	    data = line.split()
-	    entry = {}
-	    entry["date"] = data[0]
-	    entry["time"] = data[1]
-	    entry["temp"] = [float(data[i]) for i in xrange(2, 6)]
-	    entry["hum"]  = [float(data[i]) for i in xrange(6, 10)]
-	    entry["peltV"] = [float(data[i]) for i in xrange(10, 14)]
-	    entry["peltI"] = [float(data[i]) for i in xrange(14, 18)]
-	    entry["leakI"] = [float(data[i]) for i in xrange(18, 210)]
-	    minT = min(minT, min(entry["temp"]))
-	    maxT = max(maxT, max(entry["temp"]))
-	    minH = min(minH, min(entry["hum"]))
-	    maxH = max(maxH, max(entry["hum"]))
-	    minPV = min(minPV, min(entry["peltV"]))
-	    maxPV = max(maxPV, max(entry["peltV"]))
-	    minPI = min(minPI, min(entry["peltI"]))
-	    maxPI = max(maxPI, max(entry["peltI"]))
-	    minLI = min(minLI, min(entry["leakI"]))
-	    maxLI = max(maxLI, max(entry["leakI"]))
-	    readings.append(entry)
    
-    readings = readings[ args.min : args.max ]
+    # Count the number of lines in the log file
+    lineCount = 0
+    try:
+	with open(args.log, "r") as fa:
+	    for lineCount, line in enumerate(fa,1):    # Starts the counter at 1
+		None
+    except:
+	print "Unable to open file:", args.log
+	sys.exit()
+    
+    #print "Total lines:", lineCount 
+    lineStart = args.min if args.min >= 0 else lineCount + args.min + 1
+    lineEnd = args.max if args.max > 0 else lineCount + args.max + 1
+
+    #print "lineStart =", lineStart
+    #print "lineEnd =", lineEnd
+    with open(args.log, "r") as f:
+	for l, line in enumerate(f,1):
+	    if lineStart <= l <= lineEnd:
+		#print "Reading line", l
+		data = line.split()
+		entry = {}
+		entry["date"] = data[0]
+		entry["time"] = data[1]
+		entry["temp"] = [float(data[i]) for i in xrange(2, 6)]
+		entry["hum"]  = [float(data[i]) for i in xrange(6, 10)]
+		entry["peltV"] = [float(data[i]) for i in xrange(10, 14)]
+		entry["peltI"] = [float(data[i]) for i in xrange(14, 18)]
+		try:
+		    entry["leakI"] = [float(data[i]) for i in xrange(18, 210)]
+		    minLI = min(minLI, min(entry["leakI"]))
+		    maxLI = max(maxLI, max(entry["leakI"]))
+		except:
+		    # Read error with leakage currents
+		    entry["leakI"] = []
+		    minLI = 0
+		    maxLI = 0
+
+		minT = min(minT, min(entry["temp"]))
+		maxT = max(maxT, max(entry["temp"]))
+		minH = min(minH, min(entry["hum"]))
+		maxH = max(maxH, max(entry["hum"]))
+		minPV = min(minPV, min(entry["peltV"]))
+		maxPV = max(maxPV, max(entry["peltV"]))
+		minPI = min(minPI, min(entry["peltI"]))
+		maxPI = max(maxPI, max(entry["peltI"]))
+		readings.append(entry)
 
     tempG = []
     humG = []
@@ -116,6 +159,7 @@ def main():
     peltIMG = TMultiGraph()
 
 
+    # Initialize TGraphs
     for i in range(len(readings[0]["temp"])):
 	tempG.append(TGraph())
 	tempG[i].SetLineColor(COLORS[i])
@@ -148,36 +192,42 @@ def main():
 	peltIG[i].SetMarkerSize(2)
 	peltIG[i].SetMarkerColor(COLORS[i])
 
-
-    tempH = TH1D("Temp", "RBX Temperatures (^{o}C)", 20, minT - 0.05, maxT + 0.05)
+    # Book histograms
+    widthT = 0.15 * (maxT - minT)   # Sets the spacing around a TH1D plot based on the max/min vals
+    tempH = TH1D("Temp", "RBX Temperatures (^{o}C)", 20, minT - widthT, maxT + widthT)
     tempH.SetFillColor(kRed)
     tempH.SetTitle("RBX Temperatures (^{o}C)")
     tempH.GetXaxis().SetTitle("Temp (^{o}C)")
     tempH.GetYaxis().SetTitle("Entries")
     tempH.GetYaxis().SetTitleOffset(2.1)
-    
-    humH = TH1D("Humidity", "RBX Humidities (%)", 20, minH - 0.5, maxH + 0.5)
+
+   
+    widthH = 0.15 * (maxH - minH)
+    humH = TH1D("Humidity", "RBX Humidities (%)", 20, minH - widthH, maxH + widthH)
     humH.SetFillColor(kBlue)
     humH.SetTitle("RBX Humidities (%)")
     humH.GetXaxis().SetTitle("Humidity (%)")
     humH.GetYaxis().SetTitle("Entries")
     humH.GetYaxis().SetTitleOffset(2.1)
 
-    peltVH = TH1D("PeltV", "RBX Peltier Voltages (V)", 20, minPV - 0.05, maxPV + 0.05)
+    widthPV = 0.15 * (maxPV - minPV)
+    peltVH = TH1D("PeltV", "RBX Peltier Voltages (V)", 20, minPV - widthPV, maxPV + widthPV)
     peltVH.SetFillColor(kCyan)
     peltVH.SetTitle("RBX Peltier Voltages (V)")
     peltVH.GetXaxis().SetTitle("Voltage (V)")
     peltVH.GetYaxis().SetTitle("Entries")
     peltVH.GetYaxis().SetTitleOffset(2.1)
 
-    peltIH = TH1D("PeltI", "RBX Peltier Currents (A)", 20, minPI - 0.05, maxPI + 0.05)
+    widthPI = 0.15 * (maxPI - minPI)
+    peltIH = TH1D("PeltI", "RBX Peltier Currents (A)", 20, minPI - widthPI, maxPI + widthPI)
     peltIH.SetFillColor(kGreen)
     peltIH.SetTitle("RBX Peltier Currents (A)")
     peltIH.GetXaxis().SetTitle("Current (A)")
     peltIH.GetYaxis().SetTitle("Entries")
     peltIH.GetYaxis().SetTitleOffset(2.1)
 
-    leakIH = TH1D("LeakI", "RBX Leak Currents (A)", 20, minLI - 0.05, maxLI + 0.05)
+    widthLI = 0.15 * (maxLI - minLI)
+    leakIH = TH1D("LeakI", "RBX Leak Currents (A)", 20, minLI - widthLI, maxLI + widthLI)
     leakIH.SetFillColor(kOrange)
     leakIH.SetTitle("RBX Leakage Currents (mA)")
     leakIH.GetXaxis().SetTitle("Current (mA)")
@@ -186,8 +236,8 @@ def main():
     leakIH.GetYaxis().SetTitleOffset(2.1)
 
 
+    # Fill graphs, histos
     for i,entry in enumerate(readings):
-	# Fill graphs
 	for rm in range(len(entry["temp"])):
 	    temp = entry["temp"][rm]
 	    tempG[rm].SetPoint(i, i, temp)
@@ -211,17 +261,19 @@ def main():
 	for qie in range(len(entry["leakI"])):
 	    leakI = entry["leakI"][qie]
 	    leakIH.Fill(leakI)
-    
-    plotMultiGraph(readings, tempG, "RBX Temperatures (^{o}C)", "Time", "Temp (^{o}C)", "Temp") 
-    plotMultiGraph(readings, humG, "RBX Humidities (%)", "Time", "Humidity (%)", "Hum") 
-    plotMultiGraph(readings, peltVG, "RBX Peltier Voltages (V)", "Time", "Voltage (V)", "PeltV") 
-    plotMultiGraph(readings, peltIG, "RBX Peltier Currents (A)", "Time", "Current (A)", "PeltI") 
    
-    plotHisto(tempH, "Temp")
-    plotHisto(humH, "Hum")
-    plotHisto(peltVH, "PeltV")
-    plotHisto(peltIH, "PeltI")
-    plotHisto(leakIH, "LeakI")
+    # Make TMultiGraph plots
+    plotMultiGraph(readings, tempG, "RBX Temperatures (^{o}C)", "Time", "Temp (^{o}C)", "plots/Temp_graph.png") 
+    plotMultiGraph(readings, humG, "RBX Humidities (%)", "Time", "Humidity (%)", "plots/Hum_graph.png") 
+    plotMultiGraph(readings, peltVG, "RBX Peltier Voltages (V)", "Time", "Voltage (V)", "plots/PeltV_graph.png") 
+    plotMultiGraph(readings, peltIG, "RBX Peltier Currents (A)", "Time", "Current (A)", "plots/PeltI_graph.png") 
+   
+    # Make TH1D plots
+    plotHisto(tempH, "plots/Temp_histo.png")
+    plotHisto(humH, "plots/Hum_histo.png")
+    plotHisto(peltVH, "plots/PeltV_histo.png")
+    plotHisto(peltIH, "plots/PeltI_histo.png")
+    plotHisto(leakIH, "plots/LeakI_histo.png")
 
 
 if __name__ == "__main__":

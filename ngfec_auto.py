@@ -14,267 +14,192 @@
 import sys
 from sendCommands import *
 from argparse import ArgumentParser
+from statPlot import plotHisto
 import re
 import ROOT
 from ROOT import TGraph, TH1D, TCanvas, TPad, gStyle, kRed, kBlue, kGreen, kCyan, kOrange
-ROOT.gROOT.SetBatch(True)
-# Regex to search for floats 
-# (?<!_)    NOT preceeded by _
-# \d+       at least one decimal number (0-9)
-# \.        includes a .
-r = re.compile(r"(?<!_)\d+\.\d+")
-
-parser = ArgumentParser()
-parser.add_argument("cmds", help="text file containing list of ngFEC commands")
-args = parser.parse_args()
-
-cmdList = []
-with open(args.cmds, 'r') as f:
-    for line in f:
-	l = line.strip()
-	if l != "":	# Only consider non-empty lines
-    	    cmdList.append(line.strip())
-
-results = send_commands(cmds=cmdList,script=True,port=64000,control_hub='hcal904daq04')
-temps = []
-hums = []
-volts = []
-peltCur = []
-leakCur = []
-
-time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-print "-------------------------------------"
-print "| ngFEC output:\t%s |" % time 
-print "-------------------------------------"
-for line in results:
-    # Extracts all the float values from a command output into a list
-    #print line['cmd']
-    #print line['result']
-    if line['cmd'].find("temperature") >= 0:
-	temps = [float(x) for x in r.findall(line['result'])]
-	#print temps
-	print "Number of temps:", len(temps)
-    elif line['cmd'].find("humidity") >= 0:
-	hums = [float(x) for x in r.findall(line['result'])]
-	#print hums
-	print "Number of hums:", len(hums)
-    elif line['cmd'].find("Voltage") >= 0:
-	volts = [float(x) for x in r.findall(line['result'])]
-	print "Number of volts:", len(volts)
-    elif line['cmd'].find("PeltierCurrent") >= 0:
-	peltCur = [float(x) for x in r.findall(line['result'])]
-	print "Number of pelt currents:", len(peltCur)
-    
-    elif line['cmd'].find("LeakageCurrent") >= 0:
-	x = [float(x) for x in r.findall(line['result'])]
-	leakCur.extend(x)
-	print line['cmd'],  "\tNum leak currents: ", len(x)
-    
-
-print "Temps"
-print temps
-
-print "Humidities"
-print hums
-
-print "Peltier Voltages"
-print volts
-
-print "Peltier Currents"
-print peltCur
-
-print "Leakage Currents: ", len(leakCur)
-print leakCur
-
-with open("statLog.txt", "a+") as f:
-    #f.write("%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n" % (time, temps[0], temps[1], temps[2], temps[3], hums[0], hums[1], hums[2], hums[3]))
-    f.write("%s" % time)
-    for x in temps:
-	f.write("\t%f" % x)
-    for x in hums:
-	f.write("\t%f" % x)
-    for x in volts:
-	f.write("\t%f" % x)
-    for x in peltCur:
-	f.write("\t%f" % x)
-    for x in leakCur:
-	f.write("\t%f" % x)
-    f.write("\n")
+ROOT.gROOT.SetBatch(True)   # Don't display the canvas when drawing
 
 # Stat options
-# n: name
 # e: entries 
 # m: mean
 # r: std dev
-gStyle.SetOptStat("emr")
+#gStyle.SetOptStat("emr")
+#gStyle.SetStatW(0.16)
+#gStyle.SetStatH(0.133)
+#gStyle.SetStatX(1.0)
+#gStyle.SetStatY(1.0)
+gStyle.SetOptStat(0)
 
-# Temperature plots
-tempG = TGraph()
-tempG.SetLineWidth(2)
-tempG.SetLineColor(kRed)
-tempH = TH1D("Temp", "RBX Temperatures (^{o}C)", len(temps), 0.5, len(temps)+0.5)
-tempH.SetFillColor(kRed)
-for i,t in enumerate(temps):
-    tempG.SetPoint(i, i+1, t)
-    tempH.Fill(i+1, t)
-
-c = TCanvas("c", "c", 1200, 1200)
-pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
-pad.cd()
-tempG.SetTitle("RBX Temperatures (^{o}C)")
-tempG.GetXaxis().SetTitle("RM")
-tempG.GetYaxis().SetTitle("Temp (^{o}C)")
-tempG.GetYaxis().SetTitleOffset(2.1)
-tempG.GetXaxis().SetNdivisions(len(temps))
-tempG.Draw()
-c.cd()
-pad.Draw()
-#c.SaveAs("tempG.jpg")
+# Regex to search for floats 
+# \d+       at least one decimal number (0-9)
+# \.        includes a .
+r = re.compile(r"\d+\.\d+")
 
 
-c.Clear()
-pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
-pad.cd()
-tempH.SetTitle("RBX Temperatures (^{o}C)")
-tempH.GetXaxis().SetTitle("RM")
-tempH.GetYaxis().SetTitle("Temp (^{o}C)")
-tempH.GetYaxis().SetTitleOffset(2.1)
-tempH.GetXaxis().SetNdivisions(len(temps))
-tempH.Draw("HIST")
-c.cd()
-pad.Draw()
-c.SaveAs("tempH.jpg")
+
+def main():
+    parser = ArgumentParser()
+    parser.add_argument("cmds", help="text file containing list of ngFEC commands")
+    parser.add_argument("--log", "-o", default="rbxMonitor.log", help="log file to save stats in")
+    args = parser.parse_args()
+
+    cmdList = []
+    with open(args.cmds, 'r') as f:
+	for line in f:
+	    l = line.strip()
+	    if l != "":	# Only consider non-empty lines
+		cmdList.append(line.strip())
+
+    results = send_commands(cmds=cmdList,script=True,port=64000,control_hub='hcal904daq04')
+    temps = []
+    hums = []
+    volts = []
+    peltV = []
+    leakI = []
+
+    time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+#    print "-------------------------------------"
+#    print "| ngFEC output:\t%s |" % time 
+#    print "-------------------------------------"
+    for line in results:
+	# Extracts all the float values from a command output into a list
+	if line['cmd'].find("temperature") >= 0:
+	    if line['result'].find("ERROR") >= 0:
+		temps = [-1 for y in range(4)]
+	    else:
+		temps = [float(x) for x in r.findall(line['result'])]
+	    #print "Number of temps:", len(temps)
+	elif line['cmd'].find("humidity") >= 0:
+	    if line['result'].find("ERROR") >= 0:
+		hums = [-1 for y in range(4)]
+	    else:
+		hums = [float(x) for x in r.findall(line['result'])]
+	    #print "Number of hums:", len(hums)
+	elif line['cmd'].find("Voltage") >= 0: 
+	    if line['result'].find("ERROR") >= 0:
+		volts = [-1 for y in range(4)]
+	    else:
+		volts = [float(x) for x in r.findall(line['result'])]
+	    #print "Number of volts:", len(volts)
+	elif line['cmd'].find("PeltierCurrent") >= 0:
+	    if line['result'].find("ERROR") >= 0:
+		peltV = [-1 for y in range(4)]
+	    else:
+		peltV = [float(x) for x in r.findall(line['result'])]
+	    #print "Number of pelt currents:", len(peltV)
+	
+	elif line['cmd'].find("LeakageCurrent") >= 0:
+	    if line['result'].find("ERROR") >= 0:
+		I = [-1 for y in range(12)]
+	    else:
+		I = [float(x) for x in r.findall(line['result'])]
+	    leakI.extend(I)
+	    print line['cmd'],  "\tNum leak currents: ", len(I)
+	
+
+    print "Temps"
+    print temps
+
+    print "Humidities"
+    print hums
+
+    print "Peltier Voltages"
+    print volts
+
+    print "Peltier Currents"
+    print peltV
+
+    print "Leakage Currents: ", len(leakI)
+    print leakI
+
+    with open(args.log, "a+") as f:
+	f.write("%s" % time)
+	for x in temps:
+	    f.write("\t%f" % x)
+	for x in hums:
+	    f.write("\t%f" % x)
+	for x in volts:
+	    f.write("\t%f" % x)
+	for x in peltV:
+	    f.write("\t%f" % x)
+	for x in leakI:
+	    f.write("\t%f" % x)
+	f.write("\n")
+
+    
+    
+    # Temperature 
+    tempH = TH1D("Temp", "RBX Temperature (^{o}C)", len(temps), 0.5, len(temps)+0.5)
+    tempH.SetFillColor(kRed)
+    for i,t in enumerate(temps):
+	tempH.Fill(i+1, t)
+	
+    tempH.GetXaxis().SetTitle("RM")
+    tempH.GetYaxis().SetTitle("Temp (^{o}C)")
+    tempH.GetYaxis().SetTitleOffset(2.1)
+    tempH.GetXaxis().SetNdivisions(len(temps))
+
+    plotHisto(tempH, "plots/temp.png")
 
 
-# Humidity plots
-c.Clear()
-humG = TGraph()
-humG.SetLineWidth(2)
-humG.SetLineColor(kBlue)
-humG.SetTitle("RBX Humidities (%);RM;Humidity (%)")
-humH = TH1D("Humidity", "RBXHumidity (%)", len(hums), 0.5, len(hums)+0.5)
-humH.SetFillColor(kBlue)
-for i,h in enumerate(hums):
-    humG.SetPoint(i, i+1, h)
-    humH.Fill(i+1, h)
+    # Humidity
+    humH = TH1D("Humidity", "RBX Humidity (%)", len(hums), 0.5, len(hums)+0.5)
+    humH.SetFillColor(kBlue)
+    for i,h in enumerate(hums):
+	humH.Fill(i+1, h)
 
-pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
-pad.cd()
-humG.SetTitle("RBX Humidities (%)")
-humG.GetXaxis().SetTitle("RM")
-humG.GetYaxis().SetTitle("Humidity (%)")
-humG.GetYaxis().SetTitleOffset(2.1)
-humG.GetXaxis().SetNdivisions(len(hums))
-humG.Draw()
-c.cd()
-pad.Draw()
-humG.Draw()
-#c.SaveAs("humG.jpg")
+    humH.GetXaxis().SetTitle("RM")
+    humH.GetYaxis().SetTitle("Humidity (%)")
+    humH.GetYaxis().SetTitleOffset(2.1)
+    humH.GetXaxis().SetNdivisions(len(hums))
+
+    plotHisto(humH, "plots/hum.png")
 
 
-c.Clear()
-pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
-pad.cd()
-humH.GetXaxis().SetTitle("RM")
-humH.GetYaxis().SetTitle("Humidity (%)")
-humH.GetXaxis().SetNdivisions(len(hums))
-humH.Draw("HIST")
-c.cd()
-pad.Draw()
-c.SaveAs("humH.jpg")
+    # Peltier voltage 
+    peltVH = TH1D("peltV", "RBX Peltier Voltage (V)", len(volts), 0.5, len(volts)+0.5)
+    peltVH.SetFillColor(kCyan)
+    for i,t in enumerate(volts):
+	peltVH.Fill(i+1, t)
+
+    peltVH.GetXaxis().SetTitle("RM")
+    peltVH.GetYaxis().SetTitle("Voltage (V)")
+    peltVH.GetYaxis().SetTitleOffset(2.1)
+    peltVH.GetXaxis().SetNdivisions(len(volts))
+
+    plotHisto(peltVH, "plots/peltV.png")
 
 
-# Peltier voltage plots
-c.Clear()
-voltG = TGraph()
-voltG.SetLineWidth(2)
-voltG.SetLineColor(kCyan)
-voltH = TH1D("Volt", "RBX Peltier Voltages (V)", len(volts), 0.5, len(volts)+0.5)
-voltH.SetFillColor(kCyan)
-for i,t in enumerate(volts):
-    voltG.SetPoint(i, i+1, t)
-    voltH.Fill(i+1, t)
+    # Peltier current
+    peltIH = TH1D("peltI", "RBX Peltier Current (A)", len(peltV), 0.5, len(peltV)+0.5)
+    peltIH.SetFillColor(kGreen)
+    for i,t in enumerate(peltV):
+	peltIH.Fill(i+1, t)
 
-pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
-pad.cd()
-voltG.SetTitle("RBX Peltier Voltages (V)")
-voltG.GetXaxis().SetTitle("RM")
-voltG.GetYaxis().SetTitle("Voltage (V)")
-voltG.GetYaxis().SetTitleOffset(2.1)
-voltG.GetXaxis().SetNdivisions(len(volts))
-voltG.Draw()
-c.cd()
-pad.Draw()
-#c.SaveAs("voltG.jpg")
+    peltIH.GetXaxis().SetTitle("RM")
+    peltIH.GetYaxis().SetTitle("Current (A)")
+    peltIH.GetYaxis().SetTitleOffset(2.1)
+    peltIH.GetXaxis().SetNdivisions(len(peltV))
+
+    plotHisto(peltIH, "plots/peltI.png")
 
 
-c.Clear()
-pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
-pad.cd()
-voltH.SetTitle("RBX Peltier Voltages (V)")
-voltH.GetXaxis().SetTitle("RM")
-voltH.GetYaxis().SetTitle("Voltage (V)")
-voltH.GetYaxis().SetTitleOffset(2.1)
-voltH.GetXaxis().SetNdivisions(len(volts))
-voltH.Draw("HIST")
-c.cd()
-pad.Draw()
-c.SaveAs("voltH.jpg")
+    # Leakage current
+    leakIH = TH1D("leakI", "RBX Leakage Current (mA)", len(leakI), 0.5, len(leakI)+0.5)
+    leakIH.SetFillColor(kOrange)
+    for i,t in enumerate(leakI):
+	leakIH.Fill(i+1, t)
+
+    leakIH.GetXaxis().SetTitle("SiPM")
+    leakIH.GetYaxis().SetTitle("Current (mA)")
+    leakIH.GetXaxis().SetTickLength(0)
+    leakIH.GetXaxis().SetLabelOffset(999.0)
+    leakIH.GetYaxis().SetTitleOffset(2.1)
+    leakIH.GetXaxis().SetNdivisions(len(leakI))
+
+    plotHisto(leakIH, "plots/leakI.png")
 
 
-# Peltier current plots
-c.Clear()
-pCurG = TGraph()
-pCurG.SetLineWidth(2)
-pCurG.SetLineColor(kGreen)
-pCurH = TH1D("peltCur", "RBX Peltier Currents (A)", len(peltCur), 0.5, len(peltCur)+0.5)
-pCurH.SetFillColor(kGreen)
-for i,t in enumerate(peltCur):
-    pCurG.SetPoint(i, i+1, t)
-    pCurH.Fill(i+1, t)
-
-pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
-pad.cd()
-pCurG.SetTitle("RBX Peltier Currents (A)")
-pCurG.GetXaxis().SetTitle("RM")
-pCurG.GetYaxis().SetTitle("Current (A)")
-pCurG.GetYaxis().SetTitleOffset(2.1)
-pCurG.GetXaxis().SetNdivisions(len(peltCur))
-pCurG.Draw()
-c.cd()
-pad.Draw()
-#c.SaveAs("pCurG.jpg")
-
-
-c.Clear()
-pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
-pad.cd()
-pCurH.SetTitle("RBX Peltier Currents (A)")
-pCurH.GetXaxis().SetTitle("RM")
-pCurH.GetYaxis().SetTitle("Current (A)")
-pCurH.GetYaxis().SetTitleOffset(2.1)
-pCurH.GetXaxis().SetNdivisions(len(peltCur))
-pCurH.Draw("HIST")
-c.cd()
-pad.Draw()
-c.SaveAs("pCurH.jpg")
-
-
-# Leakage current plots
-c.Clear()
-lCurH = TH1D("leakCur", "RBX Leakage Currents (A)", len(leakCur), 0.5, len(leakCur)+0.5)
-lCurH.SetFillColor(kOrange)
-for i,t in enumerate(leakCur):
-    lCurH.Fill(i+1, t)
-
-pad = TPad("p","p", 0.05,0.0, 1.0, 1.0)
-pad.cd()
-lCurH.SetTitle("RBX Leakage Currents (mA)")
-lCurH.GetXaxis().SetTitle("QIE RM[1-4]-[1-48]")
-lCurH.GetYaxis().SetTitle("Current (mA)")
-lCurH.GetYaxis().SetTitleOffset(2.1)
-lCurH.GetXaxis().SetNdivisions(len(leakCur))
-lCurH.Draw("HIST")
-c.cd()
-pad.Draw()
-c.SaveAs("lCurH.jpg")
+if __name__ == "__main__":
+    sys.exit(main())
