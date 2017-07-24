@@ -14,10 +14,10 @@ import sys
 from argparse import ArgumentParser
 import ROOT
 from pprint import pprint
-from ROOT import TGraph, TMultiGraph, TH1D, TLegend, TCanvas, TPad, gStyle, kRed, kBlue, kOrange, kCyan, kGreen, kBlack
+from ROOT import TGraph, TMultiGraph, TH1D, TLegend, TCanvas, TPad, gStyle, kRed, kBlue, kOrange, kCyan, kGreen, kBlack, kViolet, kMagenta
 ROOT.gROOT.SetBatch(True)
 
-COLORS = [kRed, kCyan, kGreen, kBlack]
+COLORS = [kRed, kCyan+1, kGreen+2, kViolet+1]
 MARKERS = [21, 22, 29, 33] 
 
 # Stat box contains
@@ -59,7 +59,7 @@ def plotMultiGraph(dataReadings, vals, title, xTitle, yTitle, outF):
 	else:
 	    mg.GetXaxis().SetBinLabel(mg.GetXaxis().FindBin(i), dataReadings[i]["time"])
 
-    mg.GetXaxis().SetTitleOffset(2.4)
+    mg.GetXaxis().SetTitleOffset(2.1)
     mg.GetYaxis().SetTitleOffset(2.1)
     pad.Update()
     cv.SaveAs(outF)
@@ -84,19 +84,30 @@ def main():
     parser.add_argument("log", help="log file from ngfec_auto")
     parser.add_argument("--min", "-n", type=int, default=0, help="lower range bound (neg vals count backwards from the end)")
     parser.add_argument("--max", "-x", type=int, default=0, help="upper range bound (neg vals count backwards from the end")
+    parser.add_argument("--out", "-o", default="plots/", help="directory to save plots in")
     args = parser.parse_args()
 
+    if args.out[-1] != "/":
+        args.out += "/"
     readings = []
+    # temperature
     minT = 9999.0
     maxT = -9999.0
+    # humidity
     minH = 101.0
     maxH = -1.0
-   # # peltier voltage
+    # peltier voltage
     minPV = 9999.0
     maxPV = -9999.0
     # peltier current
     minPI = 9999.0
     maxPI = -9999.0
+    # BVin
+    minBVin = 9999.0
+    maxBVin = -9999.0
+    # Vin
+    minVin = 9999.0
+    maxVin = -9999.0
     # leakage current
     minLI = 9999.0
     maxLI = -9999.0
@@ -129,8 +140,10 @@ def main():
 		entry["hum"]  = [float(data[i]) for i in xrange(6, 10)]
 		entry["peltV"] = [float(data[i]) for i in xrange(10, 14)]
 		entry["peltI"] = [float(data[i]) for i in xrange(14, 18)]
-		try:
-		    entry["leakI"] = [float(data[i]) for i in xrange(18, 210)]
+		entry["BVin"] = [float(data[i]) for i in xrange(18, 22)]
+                entry["Vin"] = [float(data[i]) for i in xrange(22, 26)]
+                try:
+		    entry["leakI"] = [float(data[i]) for i in xrange(26, 218)]
 		    minLI = min(minLI, min(entry["leakI"]))
 		    maxLI = max(maxLI, max(entry["leakI"]))
 		except:
@@ -146,18 +159,25 @@ def main():
 		minPV = min(minPV, min(entry["peltV"]))
 		maxPV = max(maxPV, max(entry["peltV"]))
 		minPI = min(minPI, min(entry["peltI"]))
-		maxPI = max(maxPI, max(entry["peltI"]))
-		readings.append(entry)
+		maxPI = max(maxPI, max(entry["peltI"]))		
+		minBVin = min(minBVin, min(entry["BVin"]))
+		maxBVin = max(maxBVin, max(entry["BVin"]))
+		minVin = min(minVin, min(entry["Vin"]))
+		maxVin = max(maxVin, max(entry["Vin"]))
+                readings.append(entry)
 
     tempG = []
     humG = []
     peltVG = []
     peltIG = []
+    BVinG = []
+    VinG = []
     tempMG = TMultiGraph()
     humMG = TMultiGraph()
     peltVMG = TMultiGraph()
     peltIMG = TMultiGraph()
-
+    BVinMG = TMultiGraph()
+    VinMG = TMultiGraph()
 
     # Initialize TGraphs
     for i in range(len(readings[0]["temp"])):
@@ -191,46 +211,71 @@ def main():
 	peltIG[i].SetMarkerStyle(MARKERS[i])
 	peltIG[i].SetMarkerSize(2)
 	peltIG[i].SetMarkerColor(COLORS[i])
+    
+    for i in range(len(readings[0]["BVin"])):
+        BVinG.append(TGraph())
+	BVinG[i].SetLineColor(COLORS[i])
+	BVinG[i].SetLineWidth(2)
+	BVinG[i].SetMarkerStyle(MARKERS[i])
+	BVinG[i].SetMarkerSize(2)
+	BVinG[i].SetMarkerColor(COLORS[i])
 
+    for i in range(len(readings[0]["Vin"])):
+        VinG.append(TGraph())
+	VinG[i].SetLineColor(COLORS[i])
+	VinG[i].SetLineWidth(2)
+	VinG[i].SetMarkerStyle(MARKERS[i])
+	VinG[i].SetMarkerSize(2)
+	VinG[i].SetMarkerColor(COLORS[i])
+    
     # Book histograms
     widthT = 0.15 * (maxT - minT)   # Sets the spacing around a TH1D plot based on the max/min vals
-    tempH = TH1D("Temp", "RBX Temperatures (^{o}C)", 20, minT - widthT, maxT + widthT)
+    tempH = TH1D("Temp", "RBX Temperature (^{o}C)", 50, minT - widthT, maxT + widthT)
     tempH.SetFillColor(kRed)
-    tempH.SetTitle("RBX Temperatures (^{o}C)")
     tempH.GetXaxis().SetTitle("Temp (^{o}C)")
     tempH.GetYaxis().SetTitle("Entries")
     tempH.GetYaxis().SetTitleOffset(2.1)
 
    
     widthH = 0.15 * (maxH - minH)
-    humH = TH1D("Humidity", "RBX Humidities (%)", 20, minH - widthH, maxH + widthH)
+    humH = TH1D("Humidity", "RBX Humidity (%)", 50, minH - widthH, maxH + widthH)
     humH.SetFillColor(kBlue)
-    humH.SetTitle("RBX Humidities (%)")
     humH.GetXaxis().SetTitle("Humidity (%)")
     humH.GetYaxis().SetTitle("Entries")
     humH.GetYaxis().SetTitleOffset(2.1)
 
     widthPV = 0.15 * (maxPV - minPV)
-    peltVH = TH1D("PeltV", "RBX Peltier Voltages (V)", 20, minPV - widthPV, maxPV + widthPV)
-    peltVH.SetFillColor(kCyan)
-    peltVH.SetTitle("RBX Peltier Voltages (V)")
+    peltVH = TH1D("PeltV", "RBX Peltier Voltage (V)", 50, minPV - widthPV, maxPV + widthPV)
+    peltVH.SetFillColor(kCyan+1)
     peltVH.GetXaxis().SetTitle("Voltage (V)")
     peltVH.GetYaxis().SetTitle("Entries")
     peltVH.GetYaxis().SetTitleOffset(2.1)
 
     widthPI = 0.15 * (maxPI - minPI)
-    peltIH = TH1D("PeltI", "RBX Peltier Currents (A)", 20, minPI - widthPI, maxPI + widthPI)
-    peltIH.SetFillColor(kGreen)
-    peltIH.SetTitle("RBX Peltier Currents (A)")
+    peltIH = TH1D("PeltI", "RBX Peltier Current (A)", 50, minPI - widthPI, maxPI + widthPI)
+    peltIH.SetFillColor(kGreen+2)
     peltIH.GetXaxis().SetTitle("Current (A)")
     peltIH.GetYaxis().SetTitle("Entries")
     peltIH.GetYaxis().SetTitleOffset(2.1)
 
+    widthBVin = 0.15 * (maxBVin - minBVin)
+    BVinH = TH1D("BVinH", "RBX Bulk Bias Voltage In (V)", 50, minBVin - widthBVin, maxBVin + widthBVin)
+    BVinH.SetFillColor(kViolet+1)
+    BVinH.GetXaxis().SetTitle("Voltage (V)")
+    BVinH.GetYaxis().SetTitle("Entries")
+    BVinH.GetYaxis().SetTitleOffset(2.1)
+    
+    widthVin = 0.15 * (maxVin - minVin)
+    VinH = TH1D("VinH", "RBX Backplane Voltage In (V)", 50, minVin - widthVin, maxVin + widthVin)
+    VinH.SetFillColor(kMagenta)
+    VinH.GetXaxis().SetTitle("Voltage (V)")
+    VinH.GetYaxis().SetTitle("Entries")
+    VinH.GetYaxis().SetTitleOffset(2.1)
+    
     widthLI = 0.15 * (maxLI - minLI)
-    leakIH = TH1D("LeakI", "RBX Leak Currents (A)", 20, minLI - widthLI, maxLI + widthLI)
+    leakIH = TH1D("LeakI", "SiPM Leakage Current (\muA)", 50, minLI - widthLI, maxLI + widthLI)
     leakIH.SetFillColor(kOrange)
-    leakIH.SetTitle("RBX Leakage Currents (mA)")
-    leakIH.GetXaxis().SetTitle("Current (mA)")
+    leakIH.GetXaxis().SetTitle("Current (\muA)")
     leakIH.GetYaxis().SetTitle("Entries")
     leakIH.GetYaxis().SetTitleOffset(2.0)
     leakIH.GetYaxis().SetTitleOffset(2.1)
@@ -258,21 +303,35 @@ def main():
 	    peltIG[rm].SetPoint(i, i, peltI)
 	    peltIH.Fill(peltI)
 
-	for qie in range(len(entry["leakI"])):
+	for rm in range(len(entry["BVin"])):
+	    BVin = entry["BVin"][rm]
+	    BVinG[rm].SetPoint(i, i, BVin)
+	    BVinH.Fill(BVin)
+	
+	for rm in range(len(entry["Vin"])):
+	    Vin = entry["Vin"][rm]
+	    VinG[rm].SetPoint(i, i, Vin)
+	    VinH.Fill(Vin)
+  
+        for qie in range(len(entry["leakI"])):
 	    leakI = entry["leakI"][qie]
 	    leakIH.Fill(leakI)
    
     # Make TMultiGraph plots
-    plotMultiGraph(readings, tempG, "RBX Temperatures (^{o}C)", "Time", "Temp (^{o}C)", "plots/Temp_graph.png") 
-    plotMultiGraph(readings, humG, "RBX Humidities (%)", "Time", "Humidity (%)", "plots/Hum_graph.png") 
-    plotMultiGraph(readings, peltVG, "RBX Peltier Voltages (V)", "Time", "Voltage (V)", "plots/PeltV_graph.png") 
-    plotMultiGraph(readings, peltIG, "RBX Peltier Currents (A)", "Time", "Current (A)", "plots/PeltI_graph.png") 
-   
+    plotMultiGraph(readings, tempG, "RBX Temperature (^{o}C)", "Time", "Temp (^{o}C)", "plots/Temp_graph.png") 
+    plotMultiGraph(readings, humG, "RBX Humidity (%)", "Time", "Humidity (%)", "plots/Hum_graph.png") 
+    plotMultiGraph(readings, peltVG, "RBX Peltier Voltage (V)", "Time", "Voltage (V)", "plots/PeltV_graph.png") 
+    plotMultiGraph(readings, peltIG, "RBX Peltier Current (A)", "Time", "Current (A)", "plots/PeltI_graph.png")
+    plotMultiGraph(readings, BVinG, "RBX Bulk Bias Voltage In (V)", "Time", "Voltage (V)", "plots/BVin_graph.png") 
+    plotMultiGraph(readings, VinG, "RBX Backplane Voltage In (V)", "Time", "Voltage (V)", "plots/Vin_graph.png") 
+    
     # Make TH1D plots
     plotHisto(tempH, "plots/Temp_histo.png")
     plotHisto(humH, "plots/Hum_histo.png")
     plotHisto(peltVH, "plots/PeltV_histo.png")
     plotHisto(peltIH, "plots/PeltI_histo.png")
+    plotHisto(BVinH, "plots/BVin_histo.png")
+    plotHisto(VinH, "plots/Vin_histo.png") 
     plotHisto(leakIH, "plots/LeakI_histo.png")
 
 
