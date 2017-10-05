@@ -1,7 +1,8 @@
 # HE_Monitoring
-Monitor HE temperature and humidity for the building 904 burn-in.
+Monitor Compact Muon Solenoid (CMS) HCAL Encap (HE) temperature and humidity.
+Used to monitor the building 904 burn-in and H2 Testbeam.
 
-To be run from hcal904daq02. First source the following scripts:
+To be run from a daq machine (say hcal904daq04). First source the following scripts:
 
 source ~hcalsw/bin/env.sh ;
 source ~hcalsw/bin/getHCHostname.sh
