@@ -1,2 +1,7 @@
-tget HE[1-18]-[1-4]-humidityS_f fnr
-tget HE[1-18]-[1-4]-rtdtemperature_f fnr
+tget HE1-[1-4]-rtdtemperature_f fnr
+tget HE1-[1-4]-humidityS_f fnr
+tget HE1-[1-4]-PeltierVoltage_f fnr
+tget HE1-[1-4]-PeltierCurrent_f fnr
+tget HE1-[1-4]-BVin_f fnr
+tget HE1-[1-4]-Vin_f fnr
+tget HE1-[1-4]-LeakageCurrent[1-48]_f fnr

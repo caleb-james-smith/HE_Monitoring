@@ -59,7 +59,7 @@ def send_commands(cmds=cmds_default, script=False, raw=False, progbar=False, por
 		
 		# Send the ngfec commands:
 #		print ngfec_cmd
-		p = pexpect.spawn(ngfec_cmd)
+		p = pexpect.spawn(ngfec_cmd)#, timeout=100, maxread=20000)
 #		print p.pid
 		if not script:
 			for i, c in enumerate(cmds):
@@ -71,15 +71,24 @@ def send_commands(cmds=cmds_default, script=False, raw=False, progbar=False, por
 					t0 = time()
 					p.expect("{0}\s?#((\s|E)[^\r^\n]*)".format(escape(c)))
 					t1 = time()
-#					print [p.match.group(0)]
+					#print [p.match.group(0)]
+					#print "%s%s" %(p.before, p.after)
+					# Use raw output
 					output.append({
 						"cmd": c,
-						"result": p.match.group(1).strip().replace("'", ""),
+						"result": p.before + p.after, 
 						"times": [t0, t1],
 					})
+#					output.append({
+#						"cmd": c,
+#						"result": p.match.group(1).strip().replace("'", ""),
+#		  			"times": [t0, t1],
+#					})
 					raw_output += p.before + p.after
 		else:
-			p.sendline("< {0}".format(file_script))
+			#p.sendline("< {0}".format(file_script))
+			p.send("< {0}".format(file_script))
+			p.send("\n")
 			for i, c in enumerate(cmds):
 				# Deterimine how long to wait until the first result is expected:
 				if i == 0:
@@ -96,18 +105,23 @@ def send_commands(cmds=cmds_default, script=False, raw=False, progbar=False, por
 				t0 = time()
 				p.expect("{0}\s?#((\s|E)[^\r^\n]*)".format(escape(c)), timeout=timeout)
 				t1 = time()
-#				print [p.match.group(0)]
+				#print "pexpect output0: ",[p.match.group(0)]
 				output.append({
 					"cmd": c,
 					"result": p.match.group(1).strip().replace("'", ""),
 					"times": [t0, t1],
 				})
+				#print "result = ", output[-1]['result']
 				raw_output += p.before + p.after
-			p.sendline("quit")
+			#p.sendline("quit")
+			p.send("quit")
+			p.send("\n")
 		if progbar:
 			progress()
 		p.expect(pexpect.EOF)
 		raw_output += p.before
+		output[-1]["result"] += p.before
+		#print "raw_output = ",raw_output
 #		sleep(1)		# I need to make sure the ngccm process is killed.
 		p.close()
 #		print "closed"
