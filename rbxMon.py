@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from sendCommands import *
 from argparse import ArgumentParser
 
@@ -15,15 +16,15 @@ def peltier(steptime, intervaltime, testType):
     port = 64400
     control_hub = "hcal904daq04"
     if testType == "disable":
-        actionLog = "peltier.log"
-        dataLog = "HB_Peltier_RM1_RM2.log"
+        actionLog = "disable_peltier.log"
+        dataLog = "HB_disable_peltier.log"
         cmdFile1 = "enablePeltier.txt"
         cmdFile2 = "disablePeltier.txt"
         action1 = "Enabling Peltiers"
         action2 = "Disabling Peltiers"
         testName = "Peltier Enable / Disable Test"
     elif testType == "set":
-        actionLog = "set_temp.log"
+        actionLog = "set_temperature.log"
         dataLog = "HB_set_temperature.log"
         cmdFile1 = "set_temp_18.txt"
         cmdFile2 = "set_temp_5.txt"
@@ -33,7 +34,7 @@ def peltier(steptime, intervaltime, testType):
     else:
         print "Please use 'disable' or 'set' for test type."
         return
-    for cmdFile, cmdList in zip(list(cmdFile1, cmdFile2), list(cmdList1, cmdList2)):
+    for cmdFile, cmdList in zip([cmdFile1, cmdFile2], [cmdList1, cmdList2]):
         with open(cmdFile, 'r') as f:
             for line in f:
                 l = line.strip()
@@ -42,20 +43,22 @@ def peltier(steptime, intervaltime, testType):
     # enable, disable, and then enable peltier
     with open(actionLog, 'a') as pl:
         writeLog("Starting %s" % testName, pl)
-        for i in xrange(3):
+    
+    for i in xrange(3):
+        with open(actionLog, 'a') as pl:
             if i in [0,2]:
                 writeLog(action1, pl)
                 results = send_commands(cmds=cmdList1,script=False,port=port,control_hub=control_hub)
             else:
                 writeLog(action2, pl)
                 results = send_commands(cmds=cmdList2,script=False,port=port,control_hub=control_hub)
-            t = 0
-            if i == 2:
-                intervaltime *= 4
-            while t < intervaltime:
-                os.system("./ngfec_auto.py HBcommandList.txt -o " + dataLog)
-                t += steptime
-                if t < intervaltime: sleep(steptime) # don't sleep on the final iteration
+        t = 0
+        while t < intervaltime:
+            os.system("./ngfec_auto.py HBcommandList.txt -o %s -p %d" % (dataLog, port))
+            t += steptime
+            if t < intervaltime: sleep(steptime) # don't sleep on the final iteration
+    
+    with open(actionLog, 'a') as pl:
         writeLog("Finishing %s" % testName, pl)
 
 def runPeltier():
@@ -63,11 +66,22 @@ def runPeltier():
     parser.add_argument("--step",     "-s", default=20,        help="step time in seconds between readings")
     parser.add_argument("--interval", "-i", default=240,       help="interval time in seconds between actions")
     parser.add_argument("--test",     "-t", default="disable", help="test type (can be disable or set)")
+    parser.add_argument("--current",  "-c", default=-1.0,      help="current from power supply")
+    parser.add_argument("--voltage",  "-v", default=-1.0,      help="voltage from power supply")
     args = parser.parse_args()
     steptime = int(args.step)
     intervaltime = int(args.interval)
     testType = str(args.test)
-    peltier(steptime, intervaltime, testType)
+    current = float(args.current)
+    voltage = float(args.voltage)
+    if (current == -1.0 and voltage != -1.0) or (current != -1.0 and voltage == -1.0):
+        print "Please provide both -c current and -v voltage from the power supply."
+        return
+    elif current == -1.0 and voltage == -1.0:
+        peltier(steptime, intervaltime, testType)
+    else:
+        with open ("power_supply.log", 'a') as psl:
+            writeLog("%f %f" % (voltage, current), psl)
 
 def readRM(rbx, rm):
     nchannels = 0
