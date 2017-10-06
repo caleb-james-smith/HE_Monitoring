@@ -17,8 +17,13 @@ from pprint import pprint
 from ROOT import TGraph, TMultiGraph, TH1D, TLegend, TCanvas, TPad, gStyle, kRed, kBlue, kOrange, kCyan, kGreen, kBlack, kViolet, kMagenta
 ROOT.gROOT.SetBatch(True)
 
-COLORS = [kRed, kCyan+1, kGreen+2, kViolet+1]
-MARKERS = [21, 22, 29, 33] 
+#COLORS = [kRed, kCyan+1, kGreen+2, kViolet+1]
+#MARKERS = [21, 22, 29, 33] 
+
+COLORS = [kRed, kBlue, kOrange, kCyan, kGreen, kBlack, kViolet, kMagenta] 
+COLORSprime = list(c+2 for c in COLORS)
+COLORS = COLORS + COLORSprime
+MARKERS = list(i for i in xrange(20,36))
 
 # Stat box contains
 # e: entries
@@ -39,9 +44,10 @@ def plotMultiGraph(dataReadings, vals, title, xTitle, yTitle, outF):
     l = TLegend(0.9, 0.7, 1.0, 0.9)
     pad = TPad("p","p", 0.05, 0.05, 1.0, 1.0)
     pad.cd()
-    for rm in range(len(vals)):
-        l.AddEntry(vals[rm], "RM%d" % (rm+1), "pl")
-        mg.Add(vals[rm])
+    for a in xrange(len(vals)):
+        print "vals[a] = {0}".format(vals[a])
+        l.AddEntry(vals[a], "Value %d" % (a+1), "pl")
+        mg.Add(vals[a])
     mg.Draw("alp")
     pad.Update()
     mg.SetTitle(title + ";" + xTitle + ";" + yTitle)
@@ -53,7 +59,7 @@ def plotMultiGraph(dataReadings, vals, title, xTitle, yTitle, outF):
     date = "" 
     nReadings = len(dataReadings)
     divisor = nReadings / 10 + 1 # use to label no more than 10 bins, include first and last bins always
-    for i in range(nReadings):
+    for i in xrange(nReadings):
         if i % divisor == 0 or i == nReadings - 1:
             # If new date, print date and time
             if date != dataReadings[i]["date"]:
@@ -89,10 +95,19 @@ def main():
     parser.add_argument("--max", "-x", type=int, default=0, help="upper range bound (neg vals count backwards from the end")
     parser.add_argument("--out", "-o", default="plots/", help="directory to save plots in")
     args = parser.parse_args()
-
+    
+    variables = ["temp", "hum", "peltV", "peltI", "BVin", "Vin", "leakI"]
+    #variables = ["temp", "hum", "peltV", "peltI", "BVin", "Vin", "leakI", "tempRM", "tempCU", "humRM", "humCU", "tempRTD"]
+    
     if args.out[-1] != "/":
         args.out += "/"
     readings = []
+    varMins = {}
+    varMaxs = {}
+    for v in variables:
+        varMins[v] = 9999.0 
+        varMaxs[v] = -9999.0 
+    '''
     # temperature
     minT = 9999.0
     maxT = -9999.0
@@ -114,7 +129,22 @@ def main():
     # leakage current
     minLI = 9999.0
     maxLI = -9999.0
-   
+    # RM temperature
+    minTRM = 9999.0
+    maxTRM = -9999.0
+    # CU temperature
+    minTCU = 9999.0
+    maxTCU = -9999.0
+    # RM humidity
+    minHRM = 101.0
+    maxHRM = -1.0
+    # CU humidity
+    minHCU = 101.0
+    maxHCU = -1.0
+    # RTD temperature
+    minTRTD = 9999.0
+    maxTRTD = -9999.0
+    ''' 
     # Count the number of lines in the log file
     lineCount = 0
     try:
@@ -134,20 +164,35 @@ def main():
     # HE has 48 channels per RM
     # HB has 64 channels per RM
     nRMchs = 64
-    nRMs = 2
-    params = ["temp", "hum", "peltV", "peltI", "BVin", "Vin"]
+    nRMs = 4
+    #params = ["temp", "hum", "peltV", "peltI", "BVin", "Vin"]
     with open(args.log, "r") as f:
         for l, line in enumerate(f,1):
             if lineStart <= l <= lineEnd:
-                #print "Reading line", l
                 data = line.split()
+                print "Reading line %d with %d data values" % (l, len(data))
                 entry = {}
                 entry["date"] = data[0]
                 entry["time"] = data[1]
                 n = 2
-                for p in params:
-                    entry[p] = [float(data[i]) for i in xrange(n, n + nRMs)]
-                    n += nRMs
+                for v in variables:
+                    if v == "leakI":
+                        # we need to update this try because leakage currents are not read last right now...
+                        try:
+                            entry[v] = [float(data[i]) for i in xrange(n, n + nRMs * nRMchs)]
+                            n += nRMs * nRMchs
+                        except:
+                            # Read error with leakage currents
+                            entry["leakI"] = []
+                    elif v in ["tempRM", "humRM"]:
+                        entry[v] = [float(data[i]) for i in xrange(n, n + 4 * nRMs)]
+                        n += 4 * nRMs
+                    else: 
+                        entry[v] = [float(data[i]) for i in xrange(n, n + nRMs)]
+                        n += nRMs
+                    
+                    varMins[v] = min(varMins[v], min(entry[v]))
+                    varMaxs[v] = max(varMaxs[v], max(entry[v]))
 
                 '''
                 entry[p] = [float(data[i]) for i in xrange(2, 6)]
@@ -156,18 +201,7 @@ def main():
                 entry[p] = [float(data[i]) for i in xrange(14, 18)]
                 entry[p] = [float(data[i]) for i in xrange(18, 22)]
                 entry[p] = [float(data[i]) for i in xrange(22, 26)]
-                '''
-
-                try:
-                    entry["leakI"] = [float(data[i]) for i in xrange(n, n + nRMs * nRMchs)]
-                    minLI = min(minLI, min(entry["leakI"]))
-                    maxLI = max(maxLI, max(entry["leakI"]))
-                except:
-                    # Read error with leakage currents
-                    entry["leakI"] = []
-                    minLI = 0
-                    maxLI = 0
-
+                
                 minT = min(minT, min(entry["temp"]))
                 maxT = max(maxT, max(entry["temp"]))
                 minH = min(minH, min(entry["hum"]))
@@ -180,22 +214,54 @@ def main():
                 maxBVin = max(maxBVin, max(entry["BVin"]))
                 minVin = min(minVin, min(entry["Vin"]))
                 maxVin = max(maxVin, max(entry["Vin"]))
+                minTRM = min(minTRM, min(entry["tempRM"]))
+                maxTRM = min(maxTRM, min(entry["tempRM"]))
+                minTCU = min(minTCU, min(entry["tempCU"]))
+                maxTCU = min(maxTCU, min(entry["tempCU"]))
+                minHRM = min(minHRM, min(entry["humRM"]))
+                maxHRM = min(maxHRM, min(entry["humRM"]))
+                minHCU = min(minHCU, min(entry["humCU"]))
+                maxHCU = min(maxHCU, min(entry["humCU"]))
+                minTRTD = min(minTRTD, min(entry["tempRTD"]))
+                maxTRTD = min(maxTRTD, min(entry["tempRTD"]))
+                '''
                 readings.append(entry)
 
+    '''
     tempG = []
     humG = []
     peltVG = []
     peltIG = []
     BVinG = []
     VinG = []
+    '''
+
+    graphs = {}
+    for v in variables:
+        graphs[v] = []
+
+    '''
     tempMG = TMultiGraph()
     humMG = TMultiGraph()
     peltVMG = TMultiGraph()
     peltIMG = TMultiGraph()
     BVinMG = TMultiGraph()
     VinMG = TMultiGraph()
-
+    '''
+    
     # Initialize TGraphs
+    for v in variables:
+        if v != "leakI":
+            for i in xrange(len(readings[0][v])):
+                print "Create graphs for variable: %s i: %d" % (v, i)
+                graphs[v].append(TGraph())
+                graphs[v][i].SetLineColor(COLORS[i])
+                graphs[v][i].SetLineWidth(2)
+                graphs[v][i].SetMarkerStyle(MARKERS[i])
+                graphs[v][i].SetMarkerSize(2)
+                graphs[v][i].SetMarkerColor(COLORS[i])
+
+    '''
     for i in range(len(readings[0]["temp"])):
         tempG.append(TGraph())
         tempG[i].SetLineColor(COLORS[i])
@@ -243,18 +309,45 @@ def main():
         VinG[i].SetMarkerStyle(MARKERS[i])
         VinG[i].SetMarkerSize(2)
         VinG[i].SetMarkerColor(COLORS[i])
+    '''
+
+    titles = {} # name, title, x-axis unit, y-axis unit
+    titles["temp"]  = ["Temp",      "Peltier Temperature (^{o}C)",  "Temp (^{o}C)",     "Entries"]
+    titles["hum"]   = ["Humidity",  "Peltier Humidity (%)",         "Humidity (%)",     "Entries"]
+    titles["peltV"] = ["PeltV",     "Peltier Voltage (V)",          "Voltage (V)",      "Entries"]
+    titles["peltI"] = ["PeltI",     "Peltier Current (A)",          "Current (A)",      "Entries"]
+    titles["BVin"]  = ["BVin",      "Bulk Bias Voltage (V)",        "Voltage (V)",      "Entries"]
+    titles["Vin"]   = ["Vin",       "Backplane Voltage (V)",        "Voltage (V)",      "Entries"]
+    titles["leakI"] = ["LeakI",     "SiPM Leakage Current (\muA)",  "Current (\mA)",    "Entries"]
+    titles["tempRM"]  = ["TempRM",      "RM QIE Card Temperature (^{o}C)",  "Temp (^{o}C)",     "Entries"]
+    titles["humRM"]   = ["HumidityRM",  "RM QIE Card Humidity (%)",         "Humidity (%)",     "Entries"]
+    titles["tempCU"]  = ["TempCU",      "CU QIE Card Temperature (^{o}C)",  "Temp (^{o}C)",     "Entries"]
+    titles["humCU"]   = ["HumidityCU",  "CU QIE Card Humidity (%)",         "Humidity (%)",     "Entries"]
+    titles["tempRTD"] = ["TempRTD",     "Peltier RTD Temperature (^{o}C)",  "Temp (^{o}C)",     "Entries"]
+
+    histograms = {}
+    j = 0
+    for v in variables:
+        width = 0.15 * (varMaxs[v] - varMins[v])   # Sets the spacing around a TH1D plot based on the max/min vals
+        histograms[v] = TH1D(titles[v][0], titles[v][1], 50, varMins[v] - width, varMaxs[v] + width)
+        histograms[v].SetFillColor(COLORS[j])
+        histograms[v].GetXaxis().SetTitle(titles[v][2])
+        histograms[v].GetYaxis().SetTitle(titles[v][3])
+        histograms[v].GetYaxis().SetTitleOffset(2.1)
+        j += 1
     
+    '''
     # Book histograms
-    widthT = 0.15 * (maxT - minT)   # Sets the spacing around a TH1D plot based on the max/min vals
-    tempH = TH1D("Temp", "RBX Temperature (^{o}C)", 50, minT - widthT, maxT + widthT)
+    widthT = 0.15 * (varMaxs["temp"] - varMins["temp"])   # Sets the spacing around a TH1D plot based on the max/min vals
+    tempH = TH1D("Temp", "RBX Temperature (^{o}C)", 50, varMins["temp"] - widthT, varMaxs["temp"] + widthT)
     tempH.SetFillColor(kRed)
     tempH.GetXaxis().SetTitle("Temp (^{o}C)")
     tempH.GetYaxis().SetTitle("Entries")
     tempH.GetYaxis().SetTitleOffset(2.1)
 
    
-    widthH = 0.15 * (maxH - minH)
-    humH = TH1D("Humidity", "RBX Humidity (%)", 50, minH - widthH, maxH + widthH)
+    widthT = 0.15 * (varMaxs["hum"] - varMins["hum"])   # Sets the spacing around a TH1D plot based on the max/min vals
+    humH = TH1D("Humidity", "RBX Humidity (%)", 50, varMins["hum"] - widthH, varMaxs["hum"] + widthH)
     humH.SetFillColor(kBlue)
     humH.GetXaxis().SetTitle("Humidity (%)")
     humH.GetYaxis().SetTitle("Entries")
@@ -295,10 +388,18 @@ def main():
     leakIH.GetYaxis().SetTitle("Entries")
     leakIH.GetYaxis().SetTitleOffset(2.0)
     leakIH.GetYaxis().SetTitleOffset(2.1)
-
+    '''
 
     # Fill graphs, histos
     for i,entry in enumerate(readings):
+        for v in variables:
+            for a in xrange(len(entry[v])):
+                value = entry[v][a]
+                histograms[v].Fill(value)
+                if v != "leakI":
+                    graphs[v][a].SetPoint(i, i, value)
+            
+        '''
         for rm in range(len(entry["temp"])):
             temp = entry["temp"][rm]
             tempG[rm].SetPoint(i, i, temp)
@@ -332,15 +433,23 @@ def main():
         for qie in range(len(entry["leakI"])):
             leakI = entry["leakI"][qie]
             leakIH.Fill(leakI)
-   
-    # Make TMultiGraph plots
-    plotMultiGraph(readings, tempG,     "RBX Temperature (^{o}C)",      "Time", "Temp (^{o}C)", "plots/Temp_graph.png") 
-    plotMultiGraph(readings, humG,      "RBX Humidity (%)",             "Time", "Humidity (%)", "plots/Hum_graph.png") 
-    plotMultiGraph(readings, peltVG,    "RBX Peltier Voltage (V)",      "Time", "Voltage (V)",  "plots/PeltV_graph.png") 
-    plotMultiGraph(readings, peltIG,    "RBX Peltier Current (A)",      "Time", "Current (A)",  "plots/PeltI_graph.png")
-    plotMultiGraph(readings, BVinG,     "RBX Bulk Bias Voltage In (V)", "Time", "Voltage (V)",  "plots/BVin_graph.png") 
-    plotMultiGraph(readings, VinG,      "RBX Backplane Voltage In (V)", "Time", "Voltage (V)",  "plots/Vin_graph.png") 
-    
+        '''
+
+    for v in variables:
+        # Make TH1D plots
+        plotHisto(histograms[v], "plots/%s_histo.png" % titles[v][0])
+        # Make TMultiGraph plots
+        if v != "leakI":
+            plotMultiGraph(readings, graphs[v], titles[v][1], "Time", titles[v][2], "plots/%s_graph.png" % titles[v][0]) 
+
+    ''' 
+    plotMultiGraph(readings, graphs["temp"],    "RBX Temperature (^{o}C)",      "Time", "Temp (^{o}C)", "plots/Temp_graph.png") 
+    plotMultiGraph(readings, graphs["hum"],     "RBX Humidity (%)",             "Time", "Humidity (%)", "plots/Hum_graph.png") 
+    plotMultiGraph(readings, graphs["peltV"],   "RBX Peltier Voltage (V)",      "Time", "Voltage (V)",  "plots/PeltV_graph.png") 
+    plotMultiGraph(readings, graphs["peltI"],   "RBX Peltier Current (A)",      "Time", "Current (A)",  "plots/PeltI_graph.png")
+    plotMultiGraph(readings, graphs["BVin"],    "RBX Bulk Bias Voltage In (V)", "Time", "Voltage (V)",  "plots/BVin_graph.png") 
+    plotMultiGraph(readings, graphs["Vin"],     "RBX Backplane Voltage In (V)", "Time", "Voltage (V)",  "plots/Vin_graph.png") 
+
     # Make TH1D plots
     plotHisto(tempH,    "plots/Temp_histo.png")
     plotHisto(humH,     "plots/Hum_histo.png")
@@ -349,7 +458,7 @@ def main():
     plotHisto(BVinH,    "plots/BVin_histo.png")
     plotHisto(VinH,     "plots/Vin_histo.png") 
     plotHisto(leakIH,   "plots/LeakI_histo.png")
-
+    '''
 
 if __name__ == "__main__":
     sys.exit(main())

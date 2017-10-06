@@ -45,6 +45,7 @@ def peltier(steptime, intervaltime, testType):
         writeLog("Starting %s" % testName, pl)
     
     for i in xrange(3):
+        '''
         with open(actionLog, 'a') as pl:
             if i in [0,2]:
                 writeLog(action1, pl)
@@ -52,6 +53,7 @@ def peltier(steptime, intervaltime, testType):
             else:
                 writeLog(action2, pl)
                 results = send_commands(cmds=cmdList2,script=False,port=port,control_hub=control_hub)
+        '''
         t = 0
         while t < intervaltime:
             os.system("./ngfec_auto.py HBcommandList.txt -o %s -p %d" % (dataLog, port))
@@ -65,7 +67,7 @@ def runPeltier():
     parser = ArgumentParser()
     parser.add_argument("--step",     "-s", default=20,        help="step time in seconds between readings")
     parser.add_argument("--interval", "-i", default=240,       help="interval time in seconds between actions")
-    parser.add_argument("--test",     "-t", default="disable", help="test type (can be disable or set)")
+    parser.add_argument("--test",     "-t", default="set",     help="test type (can be disable or set)")
     parser.add_argument("--current",  "-c", default=-1.0,      help="current from power supply")
     parser.add_argument("--voltage",  "-v", default=-1.0,      help="voltage from power supply")
     args = parser.parse_args()
