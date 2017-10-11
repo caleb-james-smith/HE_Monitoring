@@ -1,0 +1,14 @@
+get HB0-[1-4]-temperatureS_f
+get HB0-[1-4]-humidityS_f
+get HB0-[1-4]-PeltierVoltage_f
+get HB0-[1-4]-PeltierCurrent_f
+get HB0-[1-4]-BVin_f
+get HB0-[1-4]-Vin_f
+get HB0-[1-4]-LeakageCurrent[1-64]_f
+get HB0-[1-4]-[1-4]-B_SHT_temp_f
+get HB0-calib-B_SHT_temp_f
+get HB0-[1-4]-[1-4]-B_SHT_rh_f
+get HB0-calib-B_SHT_rh_f
+get HB0-[1-4]-rtdtemperature_f
+tget HB0-[1-4]-SetPeltierVoltage_f fnw
+get HB0-[1-4]-peltier_targettemperature_f
