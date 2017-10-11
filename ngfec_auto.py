@@ -204,13 +204,13 @@ def main():
                     print "After retrying leakI:"
                     print "leakI:", len(leakI), "\tExpected number:", exp
     
+    '''
     print "Temps:", len(temps)
     print temps
 
     print "Humidities:", len(hums)
     print hums
 
-    '''
     print "Peltier Voltages:", len(peltV)
     print peltV
 

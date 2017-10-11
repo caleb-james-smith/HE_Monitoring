@@ -17,43 +17,50 @@ def peltier(steptime, intervaltime, testType):
     control_hub = "hcal904daq04"
     if testType == "disable":
         actionLog = "disable_peltier.log"
-        dataLog = "HB_disable_peltier.log"
-        cmdFile1 = "enablePeltier.txt"
-        cmdFile2 = "disablePeltier.txt"
-        action1 = "Enabling Peltiers"
-        action2 = "Disabling Peltiers"
-        testName = "Peltier Enable / Disable Test"
+        dataLog = "HB_%s" % actionLog
+        cmdFiles = ["enablePeltier.txt", "disablePeltier.txt", "enablePeltier.txt"]
+        actions = ["Enabling Peltiers", "Disabling Peltiers", "Enabling Peltiers"]
+        testName = "Disable Peltier Test"
     elif testType == "set":
         actionLog = "set_temperature.log"
-        dataLog = "HB_set_temperature.log"
-        cmdFile1 = "set_temp_18.txt"
-        cmdFile2 = "set_temp_5.txt"
-        action1 = "Set temperature to 18.0 deg C"
-        action2 = "Set temperature to 5.0 deg C"
+        dataLog = "HB_%s" % actionLog
+        cmdFiles = ["set_temp_18.txt", "set_temp_5.txt", "set_temp_18.txt"]
+        actions = ["Set temperature to 18.0 deg C", "Set temperature to 5.0 deg C", "Set temperature to 18.0 deg C"]
         testName = "Set Temperature Test"
+    elif testType == "scan":
+        actionLog = "scan_voltage.log"
+        dataLog = "HB_%s" % actionLog
+        cmdFiles = list("set_voltage_%d.txt" % i for i in xrange(8))
+        actions = list("Set Peltier Voltage to %fV" % i for i in xrange(8))
+        testName = "Scan Peltier Voltage Test"
+    elif testType == "monitor":
+        actionLog = "monitor.log"
+        dataLog = "HB_%s" % actionLog
+        cmdFiles = []
+        actions = ["Read values"]
+        testName = "Monitor Values"
     else:
-        print "Please use 'disable' or 'set' for test type."
+        print "Please use 'disable', 'set', 'scan', or 'monitor' for test type."
         return
-    for cmdFile, cmdList in zip([cmdFile1, cmdFile2], [cmdList1, cmdList2]):
+    cmdList = []
+    for cmdFile in cmdFiles:
+        cmds = []
         with open(cmdFile, 'r') as f:
             for line in f:
                 l = line.strip()
                 if l != "": # Only consider non-empty lines
-                    cmdList.append(line.strip())
+                    cmds.append(line.strip())
+        cmdList.append(cmds)
     # enable, disable, and then enable peltier
     with open(actionLog, 'a') as pl:
         writeLog("Starting %s" % testName, pl)
     
-    for i in xrange(3):
-        '''
+    # loop through actions
+    for i, action in enumerate(actions):
         with open(actionLog, 'a') as pl:
-            if i in [0,2]:
-                writeLog(action1, pl)
-                results = send_commands(cmds=cmdList1,script=False,port=port,control_hub=control_hub)
-            else:
-                writeLog(action2, pl)
-                results = send_commands(cmds=cmdList2,script=False,port=port,control_hub=control_hub)
-        '''
+            writeLog(action, pl)
+            if cmdList:
+                results = send_commands(cmds=cmdList[i],script=False,port=port,control_hub=control_hub)
         t = 0
         while t < intervaltime:
             os.system("./ngfec_auto.py HBcommandList.txt -o %s -p %d" % (dataLog, port))
@@ -67,7 +74,7 @@ def runPeltier():
     parser = ArgumentParser()
     parser.add_argument("--step",     "-s", default=20,        help="step time in seconds between readings")
     parser.add_argument("--interval", "-i", default=240,       help="interval time in seconds between actions")
-    parser.add_argument("--test",     "-t", default="set",     help="test type (can be disable or set)")
+    parser.add_argument("--test",     "-t", default="monitor", help="test type (can be disable, set, scan, or monitor)")
     parser.add_argument("--current",  "-c", default=-1.0,      help="current from power supply")
     parser.add_argument("--voltage",  "-v", default=-1.0,      help="voltage from power supply")
     args = parser.parse_args()
