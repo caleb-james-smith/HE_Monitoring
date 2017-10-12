@@ -68,6 +68,53 @@ def retrySendCmd(cmd, expectedNum, port):
         I = [float(x[0]) for x in r_retry.findall(raw[0]['result'])]
     return I 
 
+# get string including full list of separated commands
+def getCmdString(cmdList):
+    cmdString = ""
+    sets = ["[1-4]", "[1-64]"]
+    set_values = [4, 64]
+    for cmd in cmdList:
+        cmd = cmd.strip("get ")
+        cmd = cmd.strip("tget ")
+        counts = list(cmd.count(a) for a in sets)
+        # does not contain either set
+        if counts[0] == 0 and counts[1] == 0:
+            print "no sets: {0}".format(cmd)
+            cmdString += cmd + " "
+        # contains both sets once
+        elif counts[0] == 1 and counts[1] == 1:
+            iset_1 = 0
+            iset_2 = 1
+        # contains the first set twice but not the second set
+        elif counts[0] == 2 and counts[1] == 0:
+            iset_1 = 0
+            iset_2 = 0
+        if (counts[0] == 1 and counts[1] == 1) or (counts[0] == 2 and counts[1] == 0):
+            first_split = cmd.split(sets[iset_1])
+            if len(first_split) > 2:
+                split_cmd = first_split
+            else:
+                second_split = first_split[1].split(sets[iset_2])
+                split_cmd = [first_split[0]] + second_split
+            for j in xrange(1,set_values[iset_1]+1):
+                for k in xrange(1,set_values[iset_2]+1):
+                    joined = split_cmd[0] + str(j) + split_cmd[1] + str(k) + split_cmd[2]
+                    print "j={0} k={1} {2}".format(j,k,joined)
+                    cmdString += joined + " "
+        # contains the first set once but not the second set
+        elif counts[0] == 1 and counts[1] == 0:
+            iset = 0
+        # contains the second set once but not the first set
+        elif counts[0] == 0 and counts[1] == 1:
+            iset = 1
+        if  (counts[0] == 1 and counts[1] == 0) or (counts[0] == 0 and counts[1] == 1):
+            split_cmd = cmd.split(sets[iset])
+            for j in xrange(1,set_values[iset]+1):
+                joined = str(j).join(split_cmd)
+                print "j={0} {1}".format(j,joined)
+                cmdString += joined + " "
+    
+    return cmdString
 
 def main():
     parser = ArgumentParser()
@@ -83,6 +130,10 @@ def main():
             l = line.strip()
             if l != "": # Only consider non-empty lines
                 cmdList.append(line.strip())
+    simpleCmdString = " ".join(cmdList)
+    fullCmdString = getCmdString(cmdList)
+    print simpleCmdString
+    print fullCmdString
 
     results = send_commands(cmds=cmdList,script=True,port=port,control_hub=control_hub)
     temps = []
@@ -103,8 +154,8 @@ def main():
             entries *= int(x)
         expectedEntries[c] = entries
 
-    #for a in expectedEntries.keys():
-    #    print a, "\t", expectedEntries[a]
+    for a in expectedEntries.keys():
+        print a, "\t", expectedEntries[a]
 
     time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 #    print "-------------------------------------"
@@ -123,7 +174,6 @@ def main():
                     print "Temps:", len(temps), "\tExpected number:", exp
                     temps = retrySendCmd(line['cmd'], exp, port)
                     print "After retrying temps:"
-                    print temps
                     print "Temps:", len(temps), "\tExpected number:", exp
         
         elif line['cmd'].find("humidity") >= 0:

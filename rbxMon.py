@@ -51,7 +51,7 @@ def peltier(steptime, intervaltime, testType):
                 if l != "": # Only consider non-empty lines
                     cmds.append(line.strip())
         cmdList.append(cmds)
-    # enable, disable, and then enable peltier
+    # begin test
     with open(actionLog, 'a') as pl:
         writeLog("Starting %s" % testName, pl)
     
@@ -61,6 +61,7 @@ def peltier(steptime, intervaltime, testType):
             writeLog(action, pl)
             if cmdList:
                 results = send_commands(cmds=cmdList[i],script=False,port=port,control_hub=control_hub)
+                print results
         t = 0
         while t < intervaltime:
             os.system("./ngfec_auto.py HBcommandList.txt -o %s -p %d" % (dataLog, port))
