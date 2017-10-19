@@ -132,8 +132,10 @@ def main():
     parser.add_argument("cmds", help="text file containing list of ngFEC commands")
     parser.add_argument("--log",  "-o", default="rbxMonitor.log", help="log file to save stats in")
     parser.add_argument("--port", "-p", default=64000, help="port for ngccm server")
+    parser.add_argument("--rbxMon", "-r", default=False, help="Run ngfec_auto.py with rbxMon.py")
     args = parser.parse_args()
     port = args.port
+    runRBXmon = args.rbxMon
 
     cmdList = getCmdList(args.cmds)
     #simpleCmdString = " ".join(cmdList)
@@ -201,22 +203,25 @@ def main():
                         #print "After retrying {0}:".format(name)
                         #print "{0}: {1} expected number: {2}".format(name, len(values), exp)
 
-    
-    tfile = TFile('power_test.root', 'recreate')
-    tree = TTree('t1', 't1')
-    array_dict = {}
+    if(runRBXmon==False):
+        tfile = TFile('power_test.root', 'recreate')
+        tree = TTree('t1', 't1')
+    else:
+        tfile = TFile.Open("power_test.root","UPDATE")
+        tree = tfile.Get("t1")
 
     with open(args.log, "a+") as f:
         f.write("%s " % time)
+        array_dict = {}
         x = ""
         for key in params:
             array_dict[key] = array('f', len(params[key]) * [0.] )
             name = names[key].split('-')[-1]
             float_name = '{0}[{1}]/F'.format(name,len(params[key]))
-            tree.Branch(name, array_dict[key], float_name)
+            if(tree.GetEntry(0)==0): tree.Branch(name, array_dict[key], float_name) #Need a better way to check if branches exist
             s = ""
             for i, value in enumerate(params[key]):
-                print "{0} i={1} v={2}".format(float_name, i, value)
+                #print "{0} i={1} v={2}".format(float_name, i, value)
                 array_dict[key][i] = value
                 s += "{0} ".format(value)
             #print "{0}: {1}".format(name, s)
@@ -226,6 +231,10 @@ def main():
 
     tfile.Write()
     tfile.Close()
+    
+    #if(runRBXmon==False):print "Made the Trees"
+    #else:print "Made Trees with rbxMon.py"
+        
 
     ''' 
     # Temperature 

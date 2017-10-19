@@ -2,6 +2,8 @@
 from sendCommands import *
 from argparse import ArgumentParser
 from ngfec_auto import getCmdList, getCmdString
+from ROOT import TTree, TFile
+from array import array
 
 def writeLog(message, logFile, verbose=1):
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -55,6 +57,15 @@ def peltier(steptime, intervaltime, testType):
     readCmdFile = "HBcommandList.txt"
     readCmdList = getCmdList(readCmdFile)
     readCmdString = getCmdString(readCmdList)
+
+    #Makeing Run Tree
+    tfile = TFile('power_test.root', 'recreate')
+    tree = TTree('t1', 't1')    
+    tfile.Write()
+    tfile.Close()
+    #tfile = TFile.Open("power_test.root","UPDATE")
+    #tree = tfile.Get("t1")
+    runArray = array( 'i', [ 0 ] )
     #with open(dataLog, 'a') as f:
     #    writeLog(readCmdString, f, 0)
     # loop through actions
@@ -66,10 +77,17 @@ def peltier(steptime, intervaltime, testType):
                 print results
         t = 0
         while t < intervaltime:
-            os.system("./ngfec_auto.py %s -o %s -p %d" % (readCmdFile, dataLog, port))
+            runNum = (t/steptime)+1
+            print "Processing Run  {0}".format(runNum)
+            #if(tree.GetEntry(0)==0): tree.Branch('run', runArray, 'runArray/I') #Need a better way to check if branch exist
+            runArray[0] = runNum
+            os.system("./ngfec_auto.py %s -o %s -p %d -r True" % (readCmdFile, dataLog, port))
             t += steptime
             if t < intervaltime: sleep(steptime) # don't sleep on the final iteration
-    
+
+    #tree.Fill
+    #tfile.Write()
+    #tfile.Close()
     with open(actionLog, 'a') as f:
         writeLog("Finishing %s" % testName, f)
 
@@ -112,7 +130,7 @@ def readRM(rbx, rm):
 
     with open(readLog, 'a') as f:
         writeLog("Read %s" % name, f)
-        os.system("./ngfec_auto.py %s -o %s -p %d" %(cmds, dataLog, port))
+        os.system("./ngfec_auto.py %s -o %s -p %d -r True" %(cmds, dataLog, port))
 
 def runRead():
     parser = ArgumentParser()
@@ -124,7 +142,7 @@ def runRead():
     readRM(rbx, rm)
 
 def main():
-    runPeltier()
+    runPeltier()    
     #runRead()
 
 if __name__ == "__main__":
