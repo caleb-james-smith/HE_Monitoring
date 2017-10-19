@@ -19,7 +19,8 @@ from statPlot import plotHisto
 import re
 import time
 import ROOT
-from ROOT import TGraph, TH1D, TCanvas, TPad, gStyle, kRed, kBlue, kGreen, kCyan, kOrange, kViolet, kMagenta
+from array import array
+from ROOT import TGraph, TH1D, TCanvas, TPad, gStyle, kRed, kBlue, kGreen, kCyan, kOrange, kViolet, kMagenta, TTree, TFile
 ROOT.gROOT.SetBatch(True)   # Don't display the canvas when drawing
 
 #control_hub = "cmshcaltb03"
@@ -194,118 +195,37 @@ def main():
                     params[key] = values
                     name = names[key]
                     if len(values) != exp:
-                        print "{0}: {1} expected number: {2}".format(name, len(values), exp)
+                        #print "{0}: {1} expected number: {2}".format(name, len(values), exp)
                         values = retrySendCmd(line['cmd'], exp, port)
                         params[key] = values
-                        print "After retrying {0}:".format(name)
-                        print "{0}: {1} expected number: {2}".format(name, len(values), exp)
+                        #print "After retrying {0}:".format(name)
+                        #print "{0}: {1} expected number: {2}".format(name, len(values), exp)
 
-        '''
-        if line['cmd'].find("temperature") >= 0:
-            exp = expectedEntries[line['cmd']]
-            if line['result'].find("ERROR") >= 0:
-                params["temps"] = [-1 for y in range(exp)]
-            else:
-                params["temps"] = [float(x) for x in r.findall(line['result'])]
-                if len(temps) != exp:
-                    #print line['result']
-                    temps = params["temps"]
-                    print "Temps:", len(temps), "\tExpected number:", exp
-                    temps = retrySendCmd(line['cmd'], exp, port)
-                    print "After retrying temps:"
-                    print "Temps:", len(temps), "\tExpected number:", exp
-        
-        elif line['cmd'].find("humidity") >= 0:
-            exp = expectedEntries[line['cmd']]
-            if line['result'].find("ERROR") >= 0:
-                hums = [-1 for y in range(exp)]
-            else:
-                hums = [float(x) for x in r.findall(line['result'])]
-                if len(hums) != exp:
-                    #print line['result']
-                    print "Hums:", len(hums), "\tExpected number:", exp
-                    hums = retrySendCmd(line['cmd'], exp, port)
-                    print "After retrying hums:"
-                    print "Hums:", len(hums), "\tExpected number:", exp
-        
-        elif line['cmd'].find("PeltierVoltage") >= 0: 
-            exp = expectedEntries[line['cmd']]
-            if line['result'].find("ERROR") >= 0:
-                peltV = [-1 for y in range(exp)]
-            else:
-                peltV = [float(x) for x in r.findall(line['result'])]
-                if len(peltV) != exp:
-                    #print line['result']
-                    print "peltV:", len(peltV), "\tExpected number:", exp
-                    peltV = retrySendCmd(line['cmd'], exp, port)
-                    print "After retrying peltV:"
-                    print "peltV:", len(peltV), "\tExpected number:", exp
-        
-        elif line['cmd'].find("PeltierCurrent") >= 0:
-            exp = expectedEntries[line['cmd']]
-            if line['result'].find("ERROR") >= 0:
-                peltI = [-1 for y in range(exp)]
-            else:
-                peltI = [float(x) for x in r.findall(line['result'])]
-                if len(peltI) != exp:
-                    #print line['cmd']
-                    #print line['result']
-                    print "peltI:", len(peltI), "\tExpected number:", exp
-                    peltI = retrySendCmd(line['cmd'], exp, port)
-                    print "After retrying peltI:"
-                    print "peltI:", len(peltI), "\tExpected number:", exp
-
-        elif line['cmd'].find("-BVin") >= 0:
-            exp = expectedEntries[line['cmd']]
-            if line['result'].find("ERROR") >= 0:
-                BVin = [-1 for y in range(exp)]
-            else:
-                BVin = [float(x) for x in r.findall(line['result'])]
-                if len(BVin) != exp:
-                    #print line['result']
-                    print "BVin:", len(BVin), "\tExpected number:", exp
-                    BVin = retrySendCmd(line['cmd'], exp, port)
-                    print "After retrying BVin:"
-                    print "BVin:", len(BVin), "\tExpected number:", exp
-  
-        elif line['cmd'].find("-Vin") >= 0:
-            exp = expectedEntries[line['cmd']]
-            if line['result'].find("ERROR") >= 0:
-                Vin = [-1 for y in range(exp)]
-            else:
-                Vin = [float(x) for x in r.findall(line['result'])]
-                if len(Vin) != exp:
-                    #print line['result']
-                    print "Vin:", len(Vin), "\tExpected number:", exp
-                    Vin = retrySendCmd(line['cmd'], exp, port)
-                    print "After retrying Vin:"
-                    print "Vin:", len(Vin), "\tExpected number:", exp
     
-        elif line['cmd'].find("LeakageCurrent") >= 0:
-            exp = expectedEntries[line['cmd']]
-            if line['result'].find("ERROR") >= 0:
-                leakI = [-1 for y in range(exp)]
-            else:
-                leakI = [float(x) for x in r.findall(line['result'])]
-                if len(leakI) != exp:
-                    print "leakI:", len(leakI), "\tExpected number:", exp
-                    leakI = retrySendCmd(line['cmd'], exp, port)
-                    print "After retrying leakI:"
-                    print "leakI:", len(leakI), "\tExpected number:", exp
-    
-        '''
-
+    tfile = TFile('power_test.root', 'recreate')
+    tree = TTree('t1', 't1')
+    array_dict = {}
     with open(args.log, "a+") as f:
         f.write("%s " % time)
         x = ""
         for key in params:
+            array_dict[key] = array('f', len(params[key]) * [0.] )
+            name = names[key].split('-')[-1]
+            float_name = '{0}/F'.format(name)
+            tree.Branch(name, array_dict[key], float_name)
             s = ""
-            for value in params[key]:
+            for i, value in enumerate(params[key]):
+                print "{0} i={1} v={2}".format(float_name, i, value)
+                array_dict[key][i] = value
+                tree.Fill()
                 s += "{0} ".format(value)
-            print "{0}: {1}".format(names[key], s)
+            print "{0}: {1}".format(name, s)
             x += s
         f.write(x + "\n")
-        
+
+    tfile.Write()
+    tfile.Close()
+
     ''' 
     # Temperature 
     tempH = TH1D("Temp", "RBX Temperature (^{o}C)", len(temps), 0.5, len(temps)+0.5)
