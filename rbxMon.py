@@ -1,12 +1,14 @@
 #!/usr/bin/python
 from sendCommands import *
 from argparse import ArgumentParser
+from ngfec_auto import getCmdList, getCmdString
 
-def writeLog(message, logFile):
+def writeLog(message, logFile, verbose=1):
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     message = now + " " + message
     logFile.write(message + "\n")
-    print message
+    if verbose:
+        print message
 
 def peltier(steptime, intervaltime, testType):
     print "Step time: {0}".format(steptime)
@@ -42,34 +44,34 @@ def peltier(steptime, intervaltime, testType):
     else:
         print "Please use 'disable', 'set', 'scan', or 'monitor' for test type."
         return
-    cmdList = []
+    cmdLists = []
     for cmdFile in cmdFiles:
-        cmds = []
-        with open(cmdFile, 'r') as f:
-            for line in f:
-                l = line.strip()
-                if l != "": # Only consider non-empty lines
-                    cmds.append(line.strip())
-        cmdList.append(cmds)
+        cmdList = getCmdList(cmdFile)
+        cmdLists.append(cmdList)
     # begin test
-    with open(actionLog, 'a') as pl:
-        writeLog("Starting %s" % testName, pl)
+    with open(actionLog, 'a') as f:
+        writeLog("Starting %s" % testName, f)
     
+    readCmdFile = "HBcommandList.txt"
+    readCmdList = getCmdList(readCmdFile)
+    readCmdString = getCmdString(readCmdList)
+    #with open(dataLog, 'a') as f:
+    #    writeLog(readCmdString, f, 0)
     # loop through actions
     for i, action in enumerate(actions):
-        with open(actionLog, 'a') as pl:
-            writeLog(action, pl)
-            if cmdList:
-                results = send_commands(cmds=cmdList[i],script=False,port=port,control_hub=control_hub)
+        with open(actionLog, 'a') as f:
+            writeLog(action, f)
+            if cmdLists:
+                results = send_commands(cmds=cmdLists[i],script=False,port=port,control_hub=control_hub)
                 print results
         t = 0
         while t < intervaltime:
-            os.system("./ngfec_auto.py HBcommandList.txt -o %s -p %d" % (dataLog, port))
+            os.system("./ngfec_auto.py %s -o %s -p %d" % (readCmdFile, dataLog, port))
             t += steptime
             if t < intervaltime: sleep(steptime) # don't sleep on the final iteration
     
-    with open(actionLog, 'a') as pl:
-        writeLog("Finishing %s" % testName, pl)
+    with open(actionLog, 'a') as f:
+        writeLog("Finishing %s" % testName, f)
 
 def runPeltier():
     parser = ArgumentParser()
@@ -90,8 +92,8 @@ def runPeltier():
     elif current == -1.0 and voltage == -1.0:
         peltier(steptime, intervaltime, testType)
     else:
-        with open ("power_supply.log", 'a') as psl:
-            writeLog("%f %f" % (voltage, current), psl)
+        with open ("power_supply.log", 'a') as f:
+            writeLog("%f %f" % (voltage, current), f)
 
 def readRM(rbx, rm):
     nchannels = 0
@@ -107,15 +109,9 @@ def readRM(rbx, rm):
     readLog = "%s_read.log" % (name)
     cmds = "%s.txt" % (name)
     control_hub = "hcal904daq04"
-    cmdList = []
-    with open(cmds, 'r') as f:
-        for line in f:
-            l = line.strip()
-            if l != "": # Only consider non-empty lines
-                cmdList.append(line.strip())
 
-    with open(readLog, 'a') as rl:
-        writeLog("Read %s" % name, rl)
+    with open(readLog, 'a') as f:
+        writeLog("Read %s" % name, f)
         os.system("./ngfec_auto.py %s -o %s -p %d" %(cmds, dataLog, port))
 
 def runRead():

@@ -68,19 +68,30 @@ def retrySendCmd(cmd, expectedNum, port):
         I = [float(x[0]) for x in r_retry.findall(raw[0]['result'])]
     return I 
 
-# get string including full list of separated commands
+# get command list from file
+def getCmdList(cmdFile):
+    cmdList = []
+    with open(cmdFile, 'r') as f:
+        for line in f:
+            l = line.strip()
+            if l != "": # Only consider non-empty lines
+                cmdList.append(line.strip())
+    return cmdList
+
+# get command string from command list
 def getCmdString(cmdList):
     cmdString = ""
     sets = ["[1-4]", "[1-64]"]
     set_values = [4, 64]
+    joiner = "{:<40}"
     for cmd in cmdList:
         cmd = cmd.strip("get ")
         cmd = cmd.strip("tget ")
         counts = list(cmd.count(a) for a in sets)
         # does not contain either set
         if counts[0] == 0 and counts[1] == 0:
-            print "no sets: {0}".format(cmd)
-            cmdString += cmd + " "
+            #print "no sets: {0}".format(cmd)
+            cmdString += joiner.format(cmd)
         # contains both sets once
         elif counts[0] == 1 and counts[1] == 1:
             iset_1 = 0
@@ -99,8 +110,8 @@ def getCmdString(cmdList):
             for j in xrange(1,set_values[iset_1]+1):
                 for k in xrange(1,set_values[iset_2]+1):
                     joined = split_cmd[0] + str(j) + split_cmd[1] + str(k) + split_cmd[2]
-                    print "j={0} k={1} {2}".format(j,k,joined)
-                    cmdString += joined + " "
+                    #print "j={0} k={1} {2}".format(j,k,joined)
+                    cmdString += joiner.format(joined)
         # contains the first set once but not the second set
         elif counts[0] == 1 and counts[1] == 0:
             iset = 0
@@ -111,8 +122,8 @@ def getCmdString(cmdList):
             split_cmd = cmd.split(sets[iset])
             for j in xrange(1,set_values[iset]+1):
                 joined = str(j).join(split_cmd)
-                print "j={0} {1}".format(j,joined)
-                cmdString += joined + " "
+                #print "j={0} {1}".format(j,joined)
+                cmdString += joiner.format(joined)
     
     return cmdString
 
@@ -124,16 +135,11 @@ def main():
     args = parser.parse_args()
     port = args.port
 
-    cmdList = []
-    with open(args.cmds, 'r') as f:
-        for line in f:
-            l = line.strip()
-            if l != "": # Only consider non-empty lines
-                cmdList.append(line.strip())
-    simpleCmdString = " ".join(cmdList)
-    fullCmdString = getCmdString(cmdList)
-    print simpleCmdString
-    print fullCmdString
+    cmdList = getCmdList(args.cmds)
+    #simpleCmdString = " ".join(cmdList)
+    #fullCmdString = getCmdString(cmdList)
+    #print simpleCmdString
+    #print fullCmdString
 
     results = send_commands(cmds=cmdList,script=True,port=port,control_hub=control_hub)
     temps = []
@@ -143,6 +149,9 @@ def main():
     BVin = []
     Vin = []
     leakI = []
+    card_temps = []
+    setV = []
+    target_temp = []
     expectedEntries = {}    # Expected number of entries for each command
 
     # Determine how many entries to expect from each command to know if it needs to be run again
@@ -154,8 +163,8 @@ def main():
             entries *= int(x)
         expectedEntries[c] = entries
 
-    for a in expectedEntries.keys():
-        print a, "\t", expectedEntries[a]
+    #for a in expectedEntries.keys():
+    #    print a, "\t", expectedEntries[a]
 
     time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 #    print "-------------------------------------"
@@ -277,8 +286,18 @@ def main():
     print leakI
     '''
 
+    params = [temps, hums, peltV, peltI, BVin, Vin, leakI]
+
     with open(args.log, "a+") as f:
-        f.write("%s" % time)
+        f.write("%s " % time)
+        for p in params:
+            for x in p:
+                #f.write("{:<40}".format(x))
+                f.write("{0} ".format(x))
+        f.write("\n")
+        
+        
+        '''
         for x in temps:
             f.write("\t%f" % x)
         for x in hums:
@@ -294,7 +313,7 @@ def main():
         for x in leakI:
             f.write("\t%f" % x)
         f.write("\n")
-
+        '''
     
     
     # Temperature 
