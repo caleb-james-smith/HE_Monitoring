@@ -142,16 +142,28 @@ def main():
     #print fullCmdString
 
     results = send_commands(cmds=cmdList,script=True,port=port,control_hub=control_hub)
-    temps = []
-    hums = []
-    peltV = []
-    peltI = []
-    BVin = []
-    Vin = []
-    leakI = []
-    card_temps = []
-    setV = []
-    target_temp = []
+    params = {}
+    params["temps"] = []
+    params["hums"] = []
+    params["peltV"] = []
+    params["peltI"] = []
+    params["BVin"] = []
+    params["Vin"] = []
+    params["leakI"] = []
+    params["cardT"] = []
+    params["setV"] = []
+    params["targetT"] = []
+    names = {}
+    names["temps"] = "rtdtemperature"
+    names["hums"] = "humidity"
+    names["peltV"] = "PeltierVoltage"
+    names["peltI"] = "PeltierCurrent"
+    names["BVin"] = "-BVin"
+    names["Vin"] = "-Vin"
+    names["leakI"] = "LeakageCurrent"
+    names["cardT"] = "SHT_temp"
+    names["setV"] = "SetPeltierVoltage"
+    names["targetT"] = "targettemperature"
     expectedEntries = {}    # Expected number of entries for each command
 
     # Determine how many entries to expect from each command to know if it needs to be run again
@@ -172,14 +184,33 @@ def main():
 #    print "-------------------------------------"
     for line in results:
         # Extracts all the float values from a command output into a list
+
+        for key in params:
+            if line['cmd'].find(names[key]) >= 0:
+                exp = expectedEntries[line['cmd']]
+                if line['result'].find("ERROR") >= 0:
+                    params[key] = [-1 for y in range(exp)]
+                else:
+                    values = [float(x) for x in r.findall(line['result'])]
+                    params[key] = values
+                    name = names[key]
+                    if len(values) != exp:
+                        print "{0}: {1} expected number: {2}".format(name, len(values), exp)
+                        values = retrySendCmd(line['cmd'], exp, port)
+                        params[key] = values
+                        print "After retrying {0}:".format(name)
+                        print "{0}: {1} expected number: {2}".format(name, len(values), exp)
+
+        '''
         if line['cmd'].find("temperature") >= 0:
             exp = expectedEntries[line['cmd']]
             if line['result'].find("ERROR") >= 0:
-                temps = [-1 for y in range(exp)]
+                params["temps"] = [-1 for y in range(exp)]
             else:
-                temps = [float(x) for x in r.findall(line['result'])]
+                params["temps"] = [float(x) for x in r.findall(line['result'])]
                 if len(temps) != exp:
                     #print line['result']
+                    temps = params["temps"]
                     print "Temps:", len(temps), "\tExpected number:", exp
                     temps = retrySendCmd(line['cmd'], exp, port)
                     print "After retrying temps:"
@@ -263,59 +294,18 @@ def main():
                     print "After retrying leakI:"
                     print "leakI:", len(leakI), "\tExpected number:", exp
     
-    '''
-    print "Temps:", len(temps)
-    print temps
-
-    print "Humidities:", len(hums)
-    print hums
-
-    print "Peltier Voltages:", len(peltV)
-    print peltV
-
-    print "Peltier Currents:", len(peltI)
-    print peltI
-
-    print "BVin:", len(BVin)
-    print BVin
-
-    print "Vin:", len(Vin)
-    print Vin
-    
-    print "LeakI:", len(leakI)
-    print leakI
-    '''
-
-    params = [temps, hums, peltV, peltI, BVin, Vin, leakI]
+        '''
 
     with open(args.log, "a+") as f:
         f.write("%s " % time)
-        for p in params:
-            for x in p:
-                #f.write("{:<40}".format(x))
-                f.write("{0} ".format(x))
-        f.write("\n")
+        x = ""
+        for key in params:
+            for value in params[key]:
+                x += "{0} ".format(value)
+        print "x: {0}".format(x)
+        f.write(x + "\n")
         
-        
-        '''
-        for x in temps:
-            f.write("\t%f" % x)
-        for x in hums:
-            f.write("\t%f" % x)
-        for x in peltV:
-            f.write("\t%f" % x)
-        for x in peltI:
-            f.write("\t%f" % x)
-        for x in BVin:
-            f.write("\t%f" % x)
-        for x in Vin:
-            f.write("\t%f" % x)
-        for x in leakI:
-            f.write("\t%f" % x)
-        f.write("\n")
-        '''
-    
-    
+    ''' 
     # Temperature 
     tempH = TH1D("Temp", "RBX Temperature (^{o}C)", len(temps), 0.5, len(temps)+0.5)
     tempH.SetFillColor(kRed)
@@ -413,6 +403,7 @@ def main():
     leakIH.GetXaxis().SetNdivisions(len(leakI))
 
     plotHisto(leakIH, "plots/leakI.png")
+    '''
 
 
 if __name__ == "__main__":
