@@ -209,7 +209,7 @@ def main():
         f.write("%s " % time)
         x = ""
         for key in params:
-            array_dict[key] = array('f', len(params[key]) * [0.] )
+            array_dict[key] = array('f', len(params[key]) * [0.])
             name = names[key].split('-')[-1]
             float_name = '{0}/F'.format(name)
             tree.Branch(name, array_dict[key], float_name)
@@ -217,8 +217,8 @@ def main():
             for i, value in enumerate(params[key]):
                 print "{0} i={1} v={2}".format(float_name, i, value)
                 array_dict[key][i] = value
-                tree.Fill()
                 s += "{0} ".format(value)
+                tree.Fill()
             print "{0}: {1}".format(name, s)
             x += s
         f.write(x + "\n")
