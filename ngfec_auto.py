@@ -179,9 +179,9 @@ def main():
     #    print a, "\t", expectedEntries[a]
 
     time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-#    print "-------------------------------------"
-#    print "| ngFEC output:\t%s |" % time 
-#    print "-------------------------------------"
+    #print "-------------------------------------"
+    #print "| ngFEC output:\t%s |" % time 
+    #print "-------------------------------------"
     for line in results:
         # Extracts all the float values from a command output into a list
 
@@ -205,23 +205,26 @@ def main():
     tfile = TFile('power_test.root', 'recreate')
     tree = TTree('t1', 't1')
     array_dict = {}
+
     with open(args.log, "a+") as f:
         f.write("%s " % time)
         x = ""
         for key in params:
             array_dict[key] = array('f', len(params[key]) * [0.])
             name = names[key].split('-')[-1]
-            float_name = '{0}/F'.format(name)
+            float_name = '{0}[{1}]/F'.format(name,len(params[key]))
+            # make one branch per variable
             tree.Branch(name, array_dict[key], float_name)
             s = ""
             for i, value in enumerate(params[key]):
                 print "{0} i={1} v={2}".format(float_name, i, value)
                 array_dict[key][i] = value
                 s += "{0} ".format(value)
-                tree.Fill()
             print "{0}: {1}".format(name, s)
             x += s
         f.write(x + "\n")
+        # fill tree once
+        tree.Fill()
 
     tfile.Write()
     tfile.Close()

@@ -76,7 +76,7 @@ def peltier(steptime, intervaltime, testType):
 def runPeltier():
     parser = ArgumentParser()
     parser.add_argument("--step",     "-s", default=20,        help="step time in seconds between readings")
-    parser.add_argument("--interval", "-i", default=240,       help="interval time in seconds between actions")
+    parser.add_argument("--interval", "-i", default=20,        help="interval time in seconds between actions")
     parser.add_argument("--test",     "-t", default="monitor", help="test type (can be disable, set, scan, or monitor)")
     parser.add_argument("--current",  "-c", default=-1.0,      help="current from power supply")
     parser.add_argument("--voltage",  "-v", default=-1.0,      help="voltage from power supply")
