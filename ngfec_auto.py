@@ -22,8 +22,6 @@ import ROOT
 from ROOT import TGraph, TH1D, TCanvas, TPad, gStyle, kRed, kBlue, kGreen, kCyan, kOrange, kViolet, kMagenta
 ROOT.gROOT.SetBatch(True)   # Don't display the canvas when drawing
 
-#port = 64000
-#port = 64400
 #control_hub = "cmshcaltb03"
 control_hub = "hcal904daq04"
 
@@ -43,7 +41,8 @@ gStyle.SetOptStat(0)
 # \d+       at least one decimal number (0-9)
 # \.        includes a .
 #r = re.compile(r"\d+\.\d+")
-r = re.compile(r"(?<=\s)\d+\.\d+")
+#r = re.compile(r"(?<=\s)\d+\.\d+")
+r = re.compile(r"[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?")
 
 # Search for results that either end in a decimal number, whitespace, or $ (eg 115.$)
 r_retry = re.compile(r"((?<=\s)\d+\.(\d+|(?=\s)|(?=\$)))")
@@ -300,9 +299,11 @@ def main():
         f.write("%s " % time)
         x = ""
         for key in params:
+            s = ""
             for value in params[key]:
-                x += "{0} ".format(value)
-        print "x: {0}".format(x)
+                s += "{0} ".format(value)
+            print "{0}: {1}".format(names[key], s)
+            x += s
         f.write(x + "\n")
         
     ''' 
