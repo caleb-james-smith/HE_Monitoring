@@ -217,10 +217,10 @@ def main():
             tree.Branch(name, array_dict[key], float_name)
             s = ""
             for i, value in enumerate(params[key]):
-                print "{0} i={1} v={2}".format(float_name, i, value)
+                #print "{0} i={1} v={2}".format(float_name, i, value)
                 array_dict[key][i] = value
                 s += "{0} ".format(value)
-            print "{0}: {1}".format(name, s)
+            #print "{0}: {1}".format(name, s)
             x += s
         f.write(x + "\n")
         # fill tree once
