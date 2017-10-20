@@ -92,12 +92,12 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("log", help="log file from ngfec_auto")
     parser.add_argument("--min", "-n", type=int, default=0, help="lower range bound (neg vals count backwards from the end)")
-    parser.add_argument("--max", "-x", type=int, default=0, help="upper range bound (neg vals count backwards from the end")
+    parser.add_argument("--max", "-x", type=int, default=0, help="upper range bound (neg vals count backwards from the end)")
     parser.add_argument("--out", "-o", default="plots/", help="directory to save plots in")
     args = parser.parse_args()
     
-    variables = ["temp", "hum", "peltV", "peltI", "BVin", "Vin", "leakI"]
-    #variables = ["temp", "hum", "peltV", "peltI", "BVin", "Vin", "leakI", "tempRM", "tempCU", "humRM", "humCU", "tempRTD"]
+    #variables = ["temp", "hum", "peltV", "peltI", "BVin", "Vin", "leakI"]
+    variables = ["temps", "hums", "peltV", "peltI", "BVin", "Vin", "leakI", "cardT", "calibT", "setV", "targetT"]
     
     if args.out[-1] != "/":
         args.out += "/"
@@ -176,6 +176,7 @@ def main():
                 entry["time"] = data[1]
                 n = 2
                 for v in variables:
+                    print "v: {0} n: {1}".format(v, n)
                     if v == "leakI":
                         # we need to update this try because leakage currents are not read last right now...
                         try:
@@ -184,9 +185,12 @@ def main():
                         except:
                             # Read error with leakage currents
                             entry["leakI"] = []
-                    elif v in ["tempRM", "humRM"]:
+                    elif v in ["cardT"]:
                         entry[v] = [float(data[i]) for i in xrange(n, n + 4 * nRMs)]
                         n += 4 * nRMs
+                    elif v in ["calibT"]:
+                        entry[v] = [float(data[i]) for i in xrange(n, n + 1)]
+                        n += 1
                     else: 
                         entry[v] = [float(data[i]) for i in xrange(n, n + nRMs)]
                         n += nRMs
@@ -234,13 +238,7 @@ def main():
     peltIG = []
     BVinG = []
     VinG = []
-    '''
-
-    graphs = {}
-    for v in variables:
-        graphs[v] = []
-
-    '''
+    
     tempMG = TMultiGraph()
     humMG = TMultiGraph()
     peltVMG = TMultiGraph()
@@ -250,7 +248,9 @@ def main():
     '''
     
     # Initialize TGraphs
+    graphs = {}
     for v in variables:
+        graphs[v] = []
         if v != "leakI":
             for i in xrange(len(readings[0][v])):
                 print "Create graphs for variable: %s i: %d" % (v, i)
@@ -312,19 +312,18 @@ def main():
     '''
 
     titles = {} # name, title, x-axis unit, y-axis unit
-    titles["temp"]  = ["Temp",      "Peltier Temperature (^{o}C)",  "Temp (^{o}C)",     "Entries"]
-    titles["hum"]   = ["Humidity",  "Peltier Humidity (%)",         "Humidity (%)",     "Entries"]
-    titles["peltV"] = ["PeltV",     "Peltier Voltage (V)",          "Voltage (V)",      "Entries"]
-    titles["peltI"] = ["PeltI",     "Peltier Current (A)",          "Current (A)",      "Entries"]
-    titles["BVin"]  = ["BVin",      "Bulk Bias Voltage (V)",        "Voltage (V)",      "Entries"]
-    titles["Vin"]   = ["Vin",       "Backplane Voltage (V)",        "Voltage (V)",      "Entries"]
-    titles["leakI"] = ["LeakI",     "SiPM Leakage Current (\muA)",  "Current (\mA)",    "Entries"]
-    titles["tempRM"]  = ["TempRM",      "RM QIE Card Temperature (^{o}C)",  "Temp (^{o}C)",     "Entries"]
-    titles["humRM"]   = ["HumidityRM",  "RM QIE Card Humidity (%)",         "Humidity (%)",     "Entries"]
-    titles["tempCU"]  = ["TempCU",      "CU QIE Card Temperature (^{o}C)",  "Temp (^{o}C)",     "Entries"]
-    titles["humCU"]   = ["HumidityCU",  "CU QIE Card Humidity (%)",         "Humidity (%)",     "Entries"]
-    titles["tempRTD"] = ["TempRTD",     "Peltier RTD Temperature (^{o}C)",  "Temp (^{o}C)",     "Entries"]
-
+    titles["temps"]  = ["Temp",      "Peltier Temperature (^{o}C)",  "Temp (^{o}C)",     "Entries"]
+    titles["hums"]   = ["Humidity",  "Peltier Humidity (%)",         "Humidity (%)",     "Entries"]
+    titles["peltV"]  = ["PeltV",     "Peltier Voltage (V)",          "Voltage (V)",      "Entries"]
+    titles["peltI"]  = ["PeltI",     "Peltier Current (A)",          "Current (A)",      "Entries"]
+    titles["BVin"]   = ["BVin",      "Bulk Bias Voltage (V)",        "Voltage (V)",      "Entries"]
+    titles["Vin"]    = ["Vin",       "Backplane Voltage (V)",        "Voltage (V)",      "Entries"]
+    titles["leakI"]  = ["LeakI",     "SiPM Leakage Current (\muA)",  "Current (\mA)",    "Entries"]
+    titles["cardT"]  = ["CardTemp",  "RM QIE Card Temperature (^{o}C)", "Temp (^{o}C)",     "Entries"]
+    titles["calibT"] = ["CalibTemp", "CU QIE Card Temperature (^{o}C)", "Temp (^{o}C)",     "Entries"]
+    titles["setV"]   = ["SetV",      "Set Peltier Voltage (V)",      "Voltage (V)",      "Entries"]
+    titles["targetT"] = ["TargetTemp", "Peltier Target Temperature (^{o}C)", "Temp (^{o}C)", "Entries"]
+    
     histograms = {}
     j = 0
     for v in variables:

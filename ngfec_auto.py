@@ -163,7 +163,8 @@ def main():
     names["BVin"] = "-BVin"
     names["Vin"] = "-Vin"
     names["leakI"] = "LeakageCurrent"
-    names["cardT"] = "SHT_temp"
+    names["cardT"] = "[1-4]-B_SHT_temp"
+    names["calibT"] = "calib-B_SHT_temp"
     names["setV"] = "SetPeltierVoltage"
     names["targetT"] = "targettemperature"
     expectedEntries = {}    # Expected number of entries for each command
