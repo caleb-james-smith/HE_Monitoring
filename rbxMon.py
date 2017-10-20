@@ -58,14 +58,14 @@ def peltier(steptime, intervaltime, testType):
     readCmdList = getCmdList(readCmdFile)
     readCmdString = getCmdString(readCmdList)
 
+    #################################################
     #Makeing Run Tree
-    tfile = TFile('power_test.root', 'recreate')
-    tree = TTree('t1', 't1')    
-    tfile.Write()
-    tfile.Close()
-    #tfile = TFile.Open("power_test.root","UPDATE")
-    #tree = tfile.Get("t1")
-    runArray = array( 'i', [ 0 ] )
+    #tfile = TFile.Open('power_test.root', 'UPDATE')
+    #tree = tfile.Get('t1')    
+    #runArray = array( 'i', [ 0 ] )
+    #tree.Branch('run', runArray, 'runArray/I')
+    #################################################
+
     #with open(dataLog, 'a') as f:
     #    writeLog(readCmdString, f, 0)
     # loop through actions
@@ -79,15 +79,19 @@ def peltier(steptime, intervaltime, testType):
         while t < intervaltime:
             runNum = (t/steptime)+1
             print "Processing Run  {0}".format(runNum)
+            #################################################
+            #runArray[0] = runNum
+            #print runArray[0]
+            #print tree.GetEntry(0)
             #if(tree.GetEntry(0)==0): tree.Branch('run', runArray, 'runArray/I') #Need a better way to check if branch exist
-            runArray[0] = runNum
-            os.system("./ngfec_auto.py %s -o %s -p %d -r True" % (readCmdFile, dataLog, port))
+            #tree.Fill()
+            os.system("./ngfec_auto.py %s -o %s -p %d -r True -n %d" % (readCmdFile, dataLog, port, runNum))
             t += steptime
             if t < intervaltime: sleep(steptime) # don't sleep on the final iteration
 
-    #tree.Fill
     #tfile.Write()
     #tfile.Close()
+    #################################################
     with open(actionLog, 'a') as f:
         writeLog("Finishing %s" % testName, f)
 
@@ -142,9 +146,12 @@ def runRead():
     readRM(rbx, rm)
 
 def main():
+    #tfile = TFile('power_test.root', 'recreate')
+    #tree = TTree('t1', 't1')    
+    #tfile.Write()
+    #tfile.Close()
     runPeltier()    
     #runRead()
 
 if __name__ == "__main__":
     sys.exit(main())
-

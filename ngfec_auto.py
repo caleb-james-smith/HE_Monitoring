@@ -20,7 +20,7 @@ import re
 import time
 import ROOT
 from array import array
-from ROOT import TGraph, TH1D, TCanvas, TPad, gStyle, kRed, kBlue, kGreen, kCyan, kOrange, kViolet, kMagenta, TTree, TFile
+from ROOT import TGraph, TH1D, TCanvas, TPad, gStyle, kRed, kBlue, kGreen, kCyan, kOrange, kViolet, kMagenta, TTree, TFile, TChain
 ROOT.gROOT.SetBatch(True)   # Don't display the canvas when drawing
 
 #control_hub = "cmshcaltb03"
@@ -133,9 +133,38 @@ def main():
     parser.add_argument("--log",  "-o", default="rbxMonitor.log", help="log file to save stats in")
     parser.add_argument("--port", "-p", default=64000, help="port for ngccm server")
     parser.add_argument("--rbxMon", "-r", default=False, help="Run ngfec_auto.py with rbxMon.py")
+    parser.add_argument("--runNum", "-n", default=1, help="Run Number")
     args = parser.parse_args()
     port = args.port
     runRBXmon = args.rbxMon
+    run = int(args.runNum)
+    #print run
+    #run_time = datetime.now().strftime('%Y%m%d%H%M%S')
+    run_time = float(time.time())
+    #print run_time
+
+    if(runRBXmon==False):
+        #tfile = TFile('power_test.root', 'recreate')
+        tfile = TFile('temp.root', 'recreate')
+        tree = TTree('t1', 't1')
+        run = 1
+        run_array = array( 'i', [ 0 ] )
+        run_time_array = array( 'f', [ 0.0 ] )
+        tree.Branch("Run", run_array, "run_array/I")
+        tree.Branch("Time", run_time_array, "run_time_array/F")
+        run_array[0] = run
+        run_time_array[0] = run_time
+    else:
+        tfile = TFile('temp.root', 'recreate')
+        tree = TTree('t1', 't1')
+        #tfile = TFile.Open("power_test.root","UPDATE")
+        #tree = tfile.Get("t1")
+        run_array = array( 'i', [ 0 ] )
+        run_time_array = array( 'f', [ 0.0 ] )
+        tree.Branch("Run", run_array, "run_array/I")
+        tree.Branch("Time", run_time_array, "run_time_array/F")
+        run_array[0] = run
+        run_time_array[0] = run_time
 
     cmdList = getCmdList(args.cmds)
     #simpleCmdString = " ".join(cmdList)
@@ -180,9 +209,9 @@ def main():
     #for a in expectedEntries.keys():
     #    print a, "\t", expectedEntries[a]
 
-    time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    timeDate = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     #print "-------------------------------------"
-    #print "| ngFEC output:\t%s |" % time 
+    #print "| ngFEC output:\t%s |" % timeDate 
     #print "-------------------------------------"
     for line in results:
         # Extracts all the float values from a command output into a list
@@ -201,37 +230,45 @@ def main():
                         values = retrySendCmd(line['cmd'], exp, port)
                         params[key] = values
                         #print "After retrying {0}:".format(name)
-                        #print "{0}: {1} expected number: {2}".format(name, len(values), exp)
-
-    if(runRBXmon==False):
-        tfile = TFile('power_test.root', 'recreate')
-        tree = TTree('t1', 't1')
-    else:
-        tfile = TFile.Open("power_test.root","UPDATE")
-        tree = tfile.Get("t1")
 
     with open(args.log, "a+") as f:
-        f.write("%s " % time)
+        f.write("%s " % timeDate)
         array_dict = {}
         x = ""
         for key in params:
             array_dict[key] = array('f', len(params[key]) * [0.] )
             name = names[key].split('-')[-1]
             float_name = '{0}[{1}]/F'.format(name,len(params[key]))
-            if(tree.GetEntry(0)==0): tree.Branch(name, array_dict[key], float_name) #Need a better way to check if branches exist
+            #print "key: {0}, GetEntry(0): {1}".format(key,tree.GetEntry(0))            
+            tree.Branch(name, array_dict[key], float_name)
             s = ""
             for i, value in enumerate(params[key]):
-                #print "{0} i={1} v={2}".format(float_name, i, value)
+                #if(key=="temps"): print "{0} i={1} v={2}".format(float_name, i, value)
                 array_dict[key][i] = value
                 s += "{0} ".format(value)
             #print "{0}: {1}".format(name, s)
             x += s
         f.write(x + "\n")
-        tree.Fill()
 
+    tree.Fill()
     tfile.Write()
     tfile.Close()
     
+    if(os.path.exists("power_test_{0}.root".format(run-1))):
+        #print "it exist"
+        chain = TChain("t1")
+        chain.Add("power_test_{0}.root".format(run-1))
+        chain.Add("temp.root")
+        chain.Merge("power_test_{0}.root".format(run))
+    
+        os.remove("temp.root")
+        os.remove("power_test_{0}.root".format(run-1))
+    else:
+        chain = TChain("t1")
+        chain.Add("temp.root")
+        chain.Merge("power_test_1.root")        
+        os.remove("temp.root")
+
     #if(runRBXmon==False):print "Made the Trees"
     #else:print "Made Trees with rbxMon.py"
         
