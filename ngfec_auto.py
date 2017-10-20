@@ -138,33 +138,18 @@ def main():
     port = args.port
     runRBXmon = args.rbxMon
     run = int(args.runNum)
-    #print run
     #run_time = datetime.now().strftime('%Y%m%d%H%M%S')
     run_time = float(time.time())
-    #print run_time
-
-    if(runRBXmon==False):
-        #tfile = TFile('power_test.root', 'recreate')
-        tfile = TFile('temp.root', 'recreate')
-        tree = TTree('t1', 't1')
-        run = 1
-        run_array = array( 'i', [ 0 ] )
-        run_time_array = array( 'f', [ 0.0 ] )
-        tree.Branch("Run", run_array, "run_array/I")
-        tree.Branch("Time", run_time_array, "run_time_array/F")
-        run_array[0] = run
-        run_time_array[0] = run_time
-    else:
-        tfile = TFile('temp.root', 'recreate')
-        tree = TTree('t1', 't1')
-        #tfile = TFile.Open("power_test.root","UPDATE")
-        #tree = tfile.Get("t1")
-        run_array = array( 'i', [ 0 ] )
-        run_time_array = array( 'f', [ 0.0 ] )
-        tree.Branch("Run", run_array, "run_array/I")
-        tree.Branch("Time", run_time_array, "run_time_array/F")
-        run_array[0] = run
-        run_time_array[0] = run_time
+    
+    #Make temp tree and branches
+    tfile = TFile('temp.root', 'recreate')
+    tree = TTree('t1', 't1')
+    run_array = array( 'i', [ 0 ] )
+    run_time_array = array( 'f', [ 0.0 ] )
+    tree.Branch("Run", run_array, "run_array/I")
+    tree.Branch("Time", run_time_array, "run_time_array/F")
+    run_array[0] = run
+    run_time_array[0] = run_time
 
     cmdList = getCmdList(args.cmds)
     #simpleCmdString = " ".join(cmdList)
